@@ -16,7 +16,7 @@
 * Supports a subset of IRC commands (as required by the subject)
 * Manages users, nicknames, channels, and permissions (operators, invites, topics, etc.)
 
-> This README is a starter template. Update it as you implement features and confirm what your project supports.
+> UPDATING
 
 ---
 
