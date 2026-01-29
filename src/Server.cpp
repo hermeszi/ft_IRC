@@ -6,17 +6,27 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/29 20:25:46 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/29 21:03:25 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server.hpp"
 #include <cstring>
 #include <cerrno>
+#include <cstdio>
+#include <csignal>
 
-Server::Server() : _port(6667), _password("default"), _server_fd(-1) {}
+bool	g_stop = false;
 
-Server::Server(int port, std::string password) : _port(port), _password(password), _server_fd(-1) {}
+void	handle_signal(int sig)
+{
+	(void)sig;
+	g_stop = true;
+}
+
+Server::Server() : _port(6667), _server_fd(-1), _password("default") {}
+
+Server::Server(int port, std::string password) : _port(port), _server_fd(-1), _password(password) {}
 
 Server::Server(const Server &src) { *this = src; }
 
@@ -33,10 +43,13 @@ Server &Server::operator=(const Server &src)
 
 Server::~Server()
 {
-	if (_server_fd != -1)
+	std::cout << "\nDestructing Server..." << std::endl;
+	for (size_t x = 0; x < _pollfds.size(); x++)
 	{
-		std::cout << "Closing server socket..." << std::endl;
-		close (_server_fd);
+		if (_pollfds[x].fd > 0)
+		{
+			close (_pollfds[x].fd);
+		}
 	}
 }
 
@@ -79,14 +92,75 @@ void	Server::init()
 		std::cerr << "Error: listen failed" << std::endl;
 		exit(1);
 	}
+	signal(SIGINT, handle_signal);
+	struct pollfd pfd;
+	pfd.fd = _server_fd;
+	pfd.events = POLLIN;
+	pfd.revents = 0;
+	_pollfds.push_back(pfd);
 	std::cout << "Server listening on port " << _port << "..." << std::endl;
 }
 
 void	Server::run()
 {
 	std::cout << "Waiting for connections... (Press Ctrl+C to stop)" << std::endl;
-	while (true)
+	while (g_stop == false)
 	{
-		// Poll
+		int	poll_count = poll(&_pollfds[0], _pollfds.size(), -1);
+		if (poll_count < 0 && g_stop == false)
+		{
+			std::cerr << "Error: poll failed" << std::endl;
+			break ;
+		}
+		if (g_stop == true)
+			break ;
+		for (size_t x = 0; x < _pollfds.size(); x++)
+		{
+			if (_pollfds[x].revents & POLLIN)
+			{
+				if (_pollfds[x].fd == _server_fd)
+				{
+					struct sockaddr_in client_addr;
+					socklen_t client_len = sizeof(client_addr);
+					int	new_fd = accept(_server_fd, (struct sockaddr *)&client_addr, &client_len);
+					if (new_fd < 0)
+					{
+						if (g_stop)
+							break ;
+						std::cerr << "Error: accept failed" << std::endl;
+						continue ;
+					}
+					if (fcntl(new_fd, F_SETFL, O_NONBLOCK) < 0)
+					{
+						std::cerr << "Error: fcntl on client failed" << std::endl;
+						close(new_fd);
+						continue;
+					}
+					struct pollfd client_pfd;
+					client_pfd.fd = new_fd;
+					client_pfd.events = POLLIN;
+					client_pfd.revents = 0;
+					_pollfds.push_back(client_pfd);
+					std::cout << "New client connected! FD: " << new_fd << std::endl;
+				}
+				else
+				{
+					char	buffer[1024];
+					memset(buffer, 0, sizeof(buffer));
+					int	bytes_received = recv(_pollfds[x].fd, buffer, sizeof(buffer) - 1, 0);
+					if (bytes_received <= 0)
+					{
+						std::cout << "Client disconnected. FD: " << _pollfds[x].fd << std::endl;
+						close(_pollfds[x].fd);
+						_pollfds.erase(_pollfds.begin() + x);
+						x--;
+					}
+					else
+					{
+						std::cout << "Received from FD " << _pollfds[x].fd << ": " << buffer << std::endl;
+					}
+				}
+			}
+		}
 	}
 }
