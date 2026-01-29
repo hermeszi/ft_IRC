@@ -22,7 +22,7 @@
 
 ## Features
 
-Fill this in with what you actually implemented.
+<still populating>
 
 **Networking & I/O**
 
@@ -93,8 +93,6 @@ make re
 
 ### Run
 
-Typical subject format is:
-
 ```bash
 ./ircserv <port> <password>
 ```
@@ -148,8 +146,6 @@ PRIVMSG #test :hello
 ---
 
 ## Supported Commands
-
-List what your server supports and any limitations.
 
 | Command | Status | Notes                      |
 | ------- | -----: | -------------------------- |
@@ -228,8 +224,6 @@ Add the important design decisions here.
 
 ### How AI was used
 
-Be honest and specific. Example (replace with your own):
-
 * Used ChatGPT to generate an initial README template and checklist sections.
 * Documentation: Generating input for this README.md and verifying RFC command syntax.
 * Used AI to brainstorm edge cases for message framing (`\r\n`) and multi-client behavior.
@@ -240,7 +234,6 @@ Be honest and specific. Example (replace with your own):
 
 **AI was NOT used for:**
 
-* Writing core server logic
 * Implementing protocol handlers
 * Socket management implementation
 
