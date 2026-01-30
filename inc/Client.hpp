@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 16:02:12 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 16:09:32 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/30 16:40:37 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,9 @@ class	Client
 				void		appendBuffer(std::string data);
 				void		clearBuffer();
 				bool		isBufferReady();
+
+				bool		hasLine();
+				std::string	extractLine();
 	private:
 				int			_fd;
 				std::string	_ipAddr;

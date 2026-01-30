@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 16:05:26 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 16:19:05 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/30 16:42:19 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,4 +37,19 @@ bool	Client::isBufferReady()
 	if (_buffer.find('\n') != std::string::npos)
 		return (true);
 	return (false);
+}
+
+bool	Client::hasLine()
+{
+	return (_buffer.find('\n') != std::string::npos);
+}
+
+std::string	Client::extractLine()
+{
+	size_t	pos = _buffer.find('\n');
+	if (pos == std::string::npos)
+		return ("");
+	std::string line = _buffer.substr(0, pos + 1);
+	_buffer.erase(0, pos + 1);
+	return (line);
 }

@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 16:28:29 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/30 16:56:33 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #include <cerrno>
 #include <cstdio>
 #include <csignal>
+#include <sstream>
 
 bool	g_stop = false;
 
@@ -160,10 +161,10 @@ void	Server::run()
 						if (client)
 						{
 							client->appendBuffer(buffer);
-							if (client->isBufferReady())
+							while (client->hasLine())
 							{
-								std::cout << "[Client " << client_fd << "]: " << client->getBuffer();
-								client->clearBuffer();
+								std::string msg = client->extractLine();
+								parseMessage(msg, client_fd);
 							}
 						}
 					}
@@ -181,5 +182,36 @@ void	Server::closeClient(int fd)
 		delete _clients[fd];
 		_clients.erase(fd);
 		close (fd);
+	}
+}
+
+void	Server::parseMessage(std::string message, int fd)
+{
+	if (message.empty())
+		return ;
+	if (message.length() > 0 && message[message.length() - 1] == '\n')
+		message.erase(message.length() - 1);
+	if (message.length() > 0 && message[message.length() - 1] == '\r')
+		message.erase(message.length() - 1);
+	if (message.empty())
+		return ;
+	std::stringstream ss(message);
+	std::string command;
+	ss >> command;
+	if (command == "PASS")
+	{
+		std::cout << "DEBUG: Client " << fd << " is trying to set password." << std::endl;
+	}
+	else if (command == "NICK")
+	{
+		std::cout << "DEBUG: Client " << fd << " is trying to set nickname." << std::endl;
+	}
+	else if (command == "USER")
+	{
+		std::cout << "DEBUG: Client " << fd << " is registering user." << std::endl;
+	}
+	else
+	{
+		std::cout << "DEBUG: Unknown command: " << command << std::endl;
 	}
 }
