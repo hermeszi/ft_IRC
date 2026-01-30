@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 16:56:33 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/30 22:44:32 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -209,6 +209,14 @@ void	Server::parseMessage(std::string message, int fd)
 	else if (command == "USER")
 	{
 		std::cout << "DEBUG: Client " << fd << " is registering user." << std::endl;
+	}
+	else if (command == "PING")
+	{
+		std::string	token;
+		ss >> token;
+		std::string	reply = "PONG " + token + "\r\n";
+		send(fd, reply.c_str(), reply.length(), 0);
+		std::cout << "DEBUG: PONG sent to Client " << fd << std::endl;
 	}
 	else
 	{
