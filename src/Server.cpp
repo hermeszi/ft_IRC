@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/29 21:03:25 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/30 16:28:29 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -44,13 +44,14 @@ Server &Server::operator=(const Server &src)
 Server::~Server()
 {
 	std::cout << "\nDestructing Server..." << std::endl;
-	for (size_t x = 0; x < _pollfds.size(); x++)
+	for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++ it)
 	{
-		if (_pollfds[x].fd > 0)
-		{
-			close (_pollfds[x].fd);
-		}
+		delete it->second;
+		close (it->first);
 	}
+	_clients.clear();
+	if (_server_fd != -1)
+		close (_server_fd);
 }
 
 void	Server::init()
@@ -123,25 +124,23 @@ void	Server::run()
 					struct sockaddr_in client_addr;
 					socklen_t client_len = sizeof(client_addr);
 					int	new_fd = accept(_server_fd, (struct sockaddr *)&client_addr, &client_len);
-					if (new_fd < 0)
+					if (new_fd >= 0)
 					{
-						if (g_stop)
-							break ;
-						std::cerr << "Error: accept failed" << std::endl;
-						continue ;
+						if (fcntl(new_fd, F_SETFL, O_NONBLOCK) < 0)
+						{
+							std::cerr << "Error: fcntl on client failed" << std::endl;
+							close(new_fd);
+							continue;
+						}
+						Client *new_client = new Client(new_fd, inet_ntoa(client_addr.sin_addr));
+						_clients[new_fd] = new_client;
+						struct pollfd client_pfd;
+						client_pfd.fd = new_fd;
+						client_pfd.events = POLLIN;
+						client_pfd.revents = 0;
+						_pollfds.push_back(client_pfd);
+						std::cout << "New client connected! FD: " << new_fd << std::endl;
 					}
-					if (fcntl(new_fd, F_SETFL, O_NONBLOCK) < 0)
-					{
-						std::cerr << "Error: fcntl on client failed" << std::endl;
-						close(new_fd);
-						continue;
-					}
-					struct pollfd client_pfd;
-					client_pfd.fd = new_fd;
-					client_pfd.events = POLLIN;
-					client_pfd.revents = 0;
-					_pollfds.push_back(client_pfd);
-					std::cout << "New client connected! FD: " << new_fd << std::endl;
 				}
 				else
 				{
@@ -150,17 +149,37 @@ void	Server::run()
 					int	bytes_received = recv(_pollfds[x].fd, buffer, sizeof(buffer) - 1, 0);
 					if (bytes_received <= 0)
 					{
-						std::cout << "Client disconnected. FD: " << _pollfds[x].fd << std::endl;
-						close(_pollfds[x].fd);
+						closeClient(_pollfds[x].fd);
 						_pollfds.erase(_pollfds.begin() + x);
 						x--;
 					}
 					else
 					{
-						std::cout << "Received from FD " << _pollfds[x].fd << ": " << buffer << std::endl;
+						int	client_fd = _pollfds[x].fd;
+						Client *client = _clients[client_fd];
+						if (client)
+						{
+							client->appendBuffer(buffer);
+							if (client->isBufferReady())
+							{
+								std::cout << "[Client " << client_fd << "]: " << client->getBuffer();
+								client->clearBuffer();
+							}
+						}
 					}
 				}
 			}
 		}
+	}
+}
+
+void	Server::closeClient(int fd)
+{
+	if (_clients.find(fd) != _clients.end())
+	{
+		std::cout << "Client disconnected: FD " << fd << std::endl;
+		delete _clients[fd];
+		_clients.erase(fd);
+		close (fd);
 	}
 }
