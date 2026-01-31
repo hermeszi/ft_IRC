@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:00:55 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 16:47:40 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/31 16:21:49 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,11 @@ class	Server
 
 				void	closeClient(int fd);
 				void	parseMessage(std::string message, int fd);
+
+				void	_executePASS(Client *client, std::string arg);
+				void	_executeNICK(Client *client, std::string arg);
+				void	_executeUSER(Client *client, std::string arg);
+				void	_executePING(int fd, std::string arg);
 
 				Server(const Server &src);
 				Server &operator=(const Server &src);
