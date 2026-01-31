@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/31 16:27:06 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/31 16:57:48 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,6 +198,8 @@ void	Server::parseMessage(std::string message, int fd)
 	std::stringstream ss(message);
 	std::string command;
 	ss >> command;
+	for (size_t x = 0; x < command.length(); x++)
+		command[x] = std::toupper(command[x]);
 	std::string	arg;
 	std::getline(ss, arg);
 	if (!arg.empty() && arg[0] == ' ')
@@ -213,33 +215,61 @@ void	Server::parseMessage(std::string message, int fd)
 		_executeUSER(client, arg);
 	else if (command == "PING")
 		_executePING(fd, arg);
+	else
+	{
+		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
+		send(fd, err.c_str(), err.length(), 0);
+		std::cout << "Unknown Command: " << command << std::endl;
+	}
 }
 
 void	Server::_executePASS(Client *client, std::string arg)
 {
+	if (client->isRegistered())
+	{
+		std::string err = ":irc_server 462 :You may not re-register\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
 	if (arg == _password)
 	{
 		client->setHasPassword(true);
 		std::cout << "PASS Correct for FD " << client->getFd() << std::endl;
 	}
 	else
+	{
 		std::cout << "PASS Incorrect for FD " << client->getFd() << std::endl;
+		std::string err = ":irc_server 464 :Password incorrect\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		closeClient(client->getFd());
+	}
 }
 
 void	Server::_executeNICK(Client *client, std::string arg)
 {
-	std::stringstream ss(arg);
-	std::string nickname;
-	ss >> nickname;
-	if (!nickname.empty())
+	if (arg.empty())
 	{
-		client->setNickname(nickname);
-		if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
+		std::string err = ":irc_server 431 :No nickname given\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+	{
+		if (it->second == client)
+			continue;
+		if (it->second->getNickname() == arg)
 		{
-			client->setRegistered(true);
-			std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
-			send(client->getFd(), welcome.c_str(), welcome.length(), 0);
+			std::string err = ":irc_server 433 * " + arg + " :Nickname is already in used\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return ;
 		}
+	}
+	client->setNickname(arg);
+	if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
+	{
+		client->setRegistered(true);
+		std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+		send(client->getFd(), welcome.c_str(), welcome.length(), 0);
 	}
 }
 
