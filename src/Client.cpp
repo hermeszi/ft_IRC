@@ -6,13 +6,13 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 16:05:26 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 16:42:19 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/31 16:13:56 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client.hpp"
 
-Client::Client(int fd, std::string ipAddr) : _fd(fd), _ipAddr(ipAddr) {}
+Client::Client(int fd, std::string ipAddr) : _fd(fd), _ipAddr(ipAddr), _isRegistered(false), _hasPassword(false) {}
 
 Client::~Client() {}
 
@@ -52,4 +52,54 @@ std::string	Client::extractLine()
 	std::string line = _buffer.substr(0, pos + 1);
 	_buffer.erase(0, pos + 1);
 	return (line);
+}
+
+void	Client::setNickname(std::string nick)
+{
+	_nickname = nick;
+}
+
+std::string Client::getNickname() const
+{
+	return (_nickname);
+}
+
+void	Client::setUsername(std::string user)
+{
+	_username = user;
+}
+
+std::string Client::getUsername() const
+{
+	return (_username);
+}
+
+void	Client::setRealname(std::string real)
+{
+	_realname = real;
+}
+
+std::string Client::getRealname() const
+{
+	return (_realname);
+}
+
+void	Client::setRegistered(bool value)
+{
+	_isRegistered = value;
+}
+
+bool	Client::isRegistered() const
+{
+	return (_isRegistered);
+}
+
+void	Client::setHasPassword(bool value)
+{
+	_hasPassword = value;
+}
+
+bool	Client::hasPassword() const
+{
+	return (_hasPassword);
 }

@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/30 22:44:32 by jngew            ###   ########.fr       */
+/*   Updated: 2026/01/31 16:13:33 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,17 +198,52 @@ void	Server::parseMessage(std::string message, int fd)
 	std::stringstream ss(message);
 	std::string command;
 	ss >> command;
+	Client	*client = _clients[fd];
+	if (!client)
+		return ;
 	if (command == "PASS")
 	{
-		std::cout << "DEBUG: Client " << fd << " is trying to set password." << std::endl;
+		std::string	input_password;
+		ss >> input_password;
+		if (input_password == _password)
+		{
+			client->setHasPassword(true);
+			std::cout << "PASS Correct for FD " << fd << std::endl;
+		}
+		else
+		{
+			std::cout << "PASS Incorrect for FD " << fd << std::endl;
+		}
 	}
 	else if (command == "NICK")
 	{
-		std::cout << "DEBUG: Client " << fd << " is trying to set nickname." << std::endl;
+		std::string	nickname;
+		ss >> nickname;
+		if (!nickname.empty())
+		{
+			client->setNickname(nickname);
+			if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
+			{
+				client->setRegistered(true);
+				std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+				send(fd, welcome.c_str(), welcome.length(), 0);
+			}
+		}
 	}
 	else if (command == "USER")
 	{
-		std::cout << "DEBUG: Client " << fd << " is registering user." << std::endl;
+		std::string username;
+		ss >> username;
+		if (!username.empty())
+		{
+			client->setUsername(username);
+			if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
+			{
+				client->setRegistered(true);
+				std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+				send(fd, welcome.c_str(), welcome.length(), 0);
+			}
+		}
 	}
 	else if (command == "PING")
 	{
@@ -216,10 +251,5 @@ void	Server::parseMessage(std::string message, int fd)
 		ss >> token;
 		std::string	reply = "PONG " + token + "\r\n";
 		send(fd, reply.c_str(), reply.length(), 0);
-		std::cout << "DEBUG: PONG sent to Client " << fd << std::endl;
-	}
-	else
-	{
-		std::cout << "DEBUG: Unknown command: " << command << std::endl;
 	}
 }
