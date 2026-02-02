@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 20:24:51 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 20:49:15 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,6 +94,7 @@ void	Server::init()
 		exit(1);
 	}
 	signal(SIGINT, handle_signal);
+	signal(SIGQUIT, handle_signal);
 	struct pollfd pfd;
 	pfd.fd = _server_fd;
 	pfd.events = POLLIN;
@@ -164,6 +165,12 @@ void	Server::run()
 							{
 								std::string msg = client->extractLine();
 								parseMessage(msg, client_fd);
+								if (_clients.find(client_fd) == _clients.end())
+								{
+									_pollfds.erase(_pollfds.begin() + x);
+									x--;
+									break ;
+								}
 							}
 						}
 					}
@@ -178,11 +185,23 @@ void	Server::closeClient(int fd)
 	if (_clients.find(fd) != _clients.end())
 	{
 		Client	*client = _clients[fd];
-		for (std::map<std::string, Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+		std::map<std::string, Channel *>::iterator it = _channels.begin();
+		while (it != _channels.end())
 		{
 			Channel	*channel = it->second;
 			if (channel->isMember(client))
+			{
 				channel->removeMember(client);
+				if (channel->isEmpty())
+				{
+					delete channel;
+					std::map<std::string, Channel *>::iterator temp = it;
+					++it;
+					_channels.erase(temp);
+					continue ;
+				}
+			}
+			++it;
 		}
 		std::cout << "Client disconnected: FD " << fd << std::endl;
 		delete _clients[fd];
@@ -285,6 +304,12 @@ void	Server::_executeNICK(Client *client, std::string arg)
 
 void	Server::_executeUSER(Client *client, std::string arg)
 {
+	if (client->isRegistered())
+	{
+		std::string err = ":irc_server 462 :You may not re-register\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
 	std::stringstream ss(arg);
 	std::string username;
 	ss >> username;

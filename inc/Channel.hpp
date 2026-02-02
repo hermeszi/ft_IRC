@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 19:56:36 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 20:12:06 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 20:40:14 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ class	Channel
 				void	addOperator(Client *client);
 				void	removeOperator(Client *client);
 				bool	isOperator(Client *client);
+				bool	isEmpty() const;
 
 				void	broadcast(std::string message, Client *exclude);
 	private:

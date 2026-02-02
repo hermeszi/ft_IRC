@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 20:13:48 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 20:40:40 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,4 +69,9 @@ void	Channel::broadcast(std::string message, Client *exclude)
 			continue ;
 		send(_members[x]->getFd(), message.c_str(), message.length(), 0);
 	}
+}
+
+bool	Channel::isEmpty() const
+{
+	return (_members.empty());
 }
