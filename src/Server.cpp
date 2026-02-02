@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 19:02:12 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 20:24:51 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,6 +51,11 @@ Server::~Server()
 		close (it->first);
 	}
 	_clients.clear();
+	for (std::map<std::string, Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+	{
+		delete it->second;
+	}
+	_channels.clear();
 	if (_server_fd != -1)
 		close (_server_fd);
 }
@@ -172,6 +177,13 @@ void	Server::closeClient(int fd)
 {
 	if (_clients.find(fd) != _clients.end())
 	{
+		Client	*client = _clients[fd];
+		for (std::map<std::string, Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+		{
+			Channel	*channel = it->second;
+			if (channel->isMember(client))
+				channel->removeMember(client);
+		}
 		std::cout << "Client disconnected: FD " << fd << std::endl;
 		delete _clients[fd];
 		_clients.erase(fd);
@@ -319,20 +331,43 @@ void	Server::_executePRIVMSG(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	std::string targetNick = arg.substr(0, spacePos);
+	std::string target = arg.substr(0, spacePos);
 	std::string message = arg.substr(spacePos + 1);
 	if (!message.empty() && message[0] == ':')
 		message = message.substr(1);
-	Client *targetClient = _getClientByNick(targetNick);
-	if (targetClient)
+	if (target[0] == '#')
 	{
-		std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + targetNick + " :" + message + "\r\n";
-		send(targetClient->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+		if (_channels.find(target) != _channels.end())
+		{
+			Channel *channel = _channels[target];
+			if (!channel->isMember(client))
+			{
+				std::string err = ":irc_server 404 " + target + " :Cannot send to channel\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
+			std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+			channel->broadcast(fullMsg, client);
+		}
+		else
+		{
+			std::string err = ":irc_server 401 " + target + " :No such nick/channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+		}
 	}
 	else
 	{
-		std::string err = ":irc_server 401 " + targetNick + " :No such nick/channel\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
+		Client *targetClient = _getClientByNick(target);
+		if (targetClient)
+		{
+			std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+			send(targetClient->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+		}
+		else
+		{
+			std::string err = ":irc_server 401 " + target + " :No such nick/channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+		}
 	}
 }
 
@@ -349,6 +384,12 @@ void	Server::_executeQUIT(Client *client, std::string arg)
 		reason += arg;
 	}
 	std::cout << "Client " << client->getFd() << " is quitting: " << reason << std::endl;
-	//TODO -> Broadcast to Channel
+	std::string quitMsg = ":" + client->getPrefix() + " QUIT :" + reason + "\r\n";
+	for (std::map<std::string, Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+	{
+		Channel	*channel = it->second;
+		if (channel->isMember(client))
+			channel->broadcast(quitMsg, client);
+	}
 	closeClient(client->getFd());
 }

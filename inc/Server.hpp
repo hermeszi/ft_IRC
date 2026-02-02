@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:00:55 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 18:56:58 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 20:10:36 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 # include <cstdlib> // To use exit()
 # include <poll.h>
 # include "Client.hpp"
+# include "Channel.hpp"
 
 class	Server
 {
@@ -39,6 +40,7 @@ class	Server
 				std::string	_password;
 				std::vector<struct pollfd> _pollfds;
 				std::map<int, Client *> _clients;
+				std::map<std::string, Channel *> _channels;
 
 				void	closeClient(int fd);
 				void	parseMessage(std::string message, int fd);
