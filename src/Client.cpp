@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 16:05:26 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/31 16:13:56 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 18:34:55 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,4 +102,11 @@ void	Client::setHasPassword(bool value)
 bool	Client::hasPassword() const
 {
 	return (_hasPassword);
+}
+
+std::string	Client::getPrefix() const
+{
+	std::string	username = _username.empty() ? "" : "!" + _username;
+	std::string	ip = _ipAddr.empty() ? "" : "@" + _ipAddr;
+	return (_nickname + username + ip);
 }

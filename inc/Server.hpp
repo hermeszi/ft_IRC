@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:00:55 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/31 16:21:49 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 18:36:39 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,8 @@ class	Server
 				void	_executeNICK(Client *client, std::string arg);
 				void	_executeUSER(Client *client, std::string arg);
 				void	_executePING(int fd, std::string arg);
+				void	_executePRIVMSG(Client *client, std::string arg);
+				Client	*_getClientByNick(std::string nick);
 
 				Server(const Server &src);
 				Server &operator=(const Server &src);

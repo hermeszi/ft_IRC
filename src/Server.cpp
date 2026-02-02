@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/31 16:57:48 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 18:40:35 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,6 +215,8 @@ void	Server::parseMessage(std::string message, int fd)
 		_executeUSER(client, arg);
 	else if (command == "PING")
 		_executePING(fd, arg);
+	else if (command == "PRIVMSG")
+		_executePRIVMSG(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -294,4 +296,46 @@ void	Server::_executePING(int fd, std::string arg)
 {
 	std::string reply = "PONG " + arg + "\r\n";
 	send(fd, reply.c_str(), reply.length(), 0);
+}
+
+Client	*Server::_getClientByNick(std::string nick)
+{
+	for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+	{
+		if (it->second->getNickname() == nick)
+			return (it->second);
+	}
+	return (NULL);
+}
+
+void	Server::_executePRIVMSG(Client *client, std::string arg)
+{
+	if (arg.empty())
+	{
+		std::string err = ":irc_server 411 :No recipient given (PRIVMSG)\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	size_t spacePos = arg.find(' ');
+	if (spacePos == std::string::npos)
+	{
+		std::string err = ":irc_server 412 :No text to send\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	std::string targetNick = arg.substr(0, spacePos);
+	std::string message = arg.substr(spacePos + 1);
+	if (!message.empty() && message[0] == ':')
+		message = message.substr(1);
+	Client *targetClient = _getClientByNick(targetNick);
+	if (targetClient)
+	{
+		std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + targetNick + " :" + message + "\r\n";
+		send(targetClient->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+	}
+	else
+	{
+		std::string err = ":irc_server 401 " + targetNick + " :No such nick/channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+	}
 }

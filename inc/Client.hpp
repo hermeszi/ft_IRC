@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/30 16:02:12 by jngew             #+#    #+#             */
-/*   Updated: 2026/01/31 15:59:42 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 18:35:09 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@ class	Client
 				int			getFd() const;
 				std::string	getIpAddr() const;
 				std::string	getBuffer() const;
+				std::string	getPrefix() const;
 
 				void		appendBuffer(std::string data);
 				void		clearBuffer();
