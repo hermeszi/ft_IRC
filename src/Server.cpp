@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 18:40:35 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/02 19:02:12 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,38 +57,32 @@ Server::~Server()
 
 void	Server::init()
 {
-	// 1. Create the socket, AF_INET = IPv4, SOCK_STREAM = TCP
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_fd < 0)
 	{
 		std::cerr << "Error: socket creation failed" << std::endl;
 		exit(1);
 	}
-	// 2. Set socket options, this allow us to restart the server immediately without waiting for the port to "cool down"
 	int	opt = 1;
 	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 	{
 		std::cerr << "Error: setsockopt failed" << std::endl;
 		exit(1);
 	}
-	// 3. Set Non-blocking mode
 	if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0)
 	{
 		std::cerr << "Error: fcntl failed" << std::endl;
 		exit(1);
 	}
-	// 4. Configure the address
 	struct	sockaddr_in address;
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(_port);
-	// 5. Bind the socket to the port
 	if (bind(_server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
 	{
 		std::cerr << "Error: bind failed" << std::endl;
 		exit(1);
 	}
-	// 6. Start listening
 	if (listen(_server_fd, 3) < 0)
 	{
 		std::cerr << "Error: listen failed" << std::endl;
@@ -217,6 +211,8 @@ void	Server::parseMessage(std::string message, int fd)
 		_executePING(fd, arg);
 	else if (command == "PRIVMSG")
 		_executePRIVMSG(client, arg);
+	else if (command == "QUIT")
+		_executeQUIT(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -338,4 +334,21 @@ void	Server::_executePRIVMSG(Client *client, std::string arg)
 		std::string err = ":irc_server 401 " + targetNick + " :No such nick/channel\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 	}
+}
+
+void	Server::_executeQUIT(Client *client, std::string arg)
+{
+	std::string	reason = "Quit: ";
+
+	if (arg.empty())
+		reason += "Client exited";
+	else
+	{
+		if (arg[0] == ':')
+			arg = arg.substr(1);
+		reason += arg;
+	}
+	std::cout << "Client " << client->getFd() << " is quitting: " << reason << std::endl;
+	//TODO -> Broadcast to Channel
+	closeClient(client->getFd());
 }
