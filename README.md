@@ -1,8 +1,8 @@
-*This project has been created as part of the 42 curriculum by <banana1>, <banana2>.*
+*This project has been created as part of the 42 curriculum by banana1🍌, banana2🍌.
 
-# ft_irc
+# 📟 ft_irc
 
-## Description
+## 📜 Description
 
 **ft_irc** is a 42 School project where you build a minimal IRC (Internet Relay Chat) server in **C++ (C++98)**.
 
@@ -167,7 +167,23 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ## Technical Notes
 
-Add the important design decisions here.
+### 👶 Basic Socket event loop
+
+##### - Server -
+1. socket()  → Create socket fd
+2. bind()    → Attach to port
+3. listen()  → Mark as passive (accepting connections)
+4. accept()  → Wait for client, get connection fd
+5. recv()    → Read data from client
+6. send()    → Write data to client
+7. close()   → Clean up
+
+##### - Client -
+1. socket()  → Create socket fd
+2. connect() → Connect to server's IP:port
+3. send()    → Write data to server
+4. recv()    → Read data from server
+5. close()   → Clean up
 
 ### Message parsing
 
@@ -241,8 +257,8 @@ Add the important design decisions here.
 
 ## Authors
 
-* <banana1>
-* <banana2>
+* banana1🍌
+* banana2🍌
 
 ---
 
