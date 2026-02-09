@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/09 16:02:37 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/09 16:19:53 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,8 @@ void	Channel::removeMember(Client *client)
 	std::vector<Client *>::iterator it = std::find(_members.begin(), _members.end(), client);
 	if (it != _members.end())
 		_members.erase(it);
+	if (isOperator(client))
+		removeOperator(client);
 }
 
 bool	Channel::isMember(Client *client)
