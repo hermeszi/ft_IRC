@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 19:56:36 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 20:40:14 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/09 16:01:07 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,13 +25,14 @@ class	Channel
 
 				std::string	getName() const;
 
-				void	addMember(Client *client);
-				void	removeMember(Client *client);
-				bool	isMember(Client *client);
-				void	addOperator(Client *client);
-				void	removeOperator(Client *client);
-				bool	isOperator(Client *client);
-				bool	isEmpty() const;
+				void		addMember(Client *client);
+				void		removeMember(Client *client);
+				bool		isMember(Client *client);
+				void		addOperator(Client *client);
+				void		removeOperator(Client *client);
+				bool		isOperator(Client *client);
+				bool		isEmpty() const;
+				std::string	getUserList();
 
 				void	broadcast(std::string message, Client *exclude);
 	private:

@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 20:49:15 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/09 16:17:14 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -244,6 +244,8 @@ void	Server::parseMessage(std::string message, int fd)
 		_executePRIVMSG(client, arg);
 	else if (command == "QUIT")
 		_executeQUIT(client, arg);
+	else if (command == "JOIN")
+		_executeJOIN(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -417,4 +419,48 @@ void	Server::_executeQUIT(Client *client, std::string arg)
 			channel->broadcast(quitMsg, client);
 	}
 	closeClient(client->getFd());
+}
+
+void	Server::_executeJOIN(Client *client, std::string arg)
+{
+	if (arg.empty())
+	{
+		std::string err = ":irc_server 461 JOIN :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	std::string	name = arg;
+	if (name[0] != '#')
+		name = "#" + name;
+	Channel	*channel;
+	bool	isNew = false;
+	if (_channels.find(name) == _channels.end())
+	{
+		channel = new Channel(name);
+		_channels[name] = channel;
+		channel->addOperator(client);
+		isNew = true;
+		std::cout << "Created channel: " << name << std::endl;
+	}
+	else
+		channel = _channels[name];
+	if (channel->isMember(client))
+		return ;
+	channel->addMember(client);
+	std::string joinMsg = ":" + client->getPrefix() + " JOIN :" + name + "\r\n";
+	channel->broadcast(joinMsg, NULL);
+	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+
+	// 5. Send Topic (RPL_TOPIC 332) - Empty for now
+
+	std::string names = channel->getUserList();
+	std::string rpl353 = ":irc_server 353 " + client->getNickname() + " = " + name + " :" + names + "\r\n";
+	send(client->getFd(), rpl353.c_str(), rpl353.length(), 0);
+	std::string rpl366 = ":irc_server 366 " + client->getNickname() + " " + name + " :End of /NAMES list.\r\n";
+	send(client->getFd(), rpl366.c_str(), rpl366.length(), 0);
+	std::cout << client->getNickname() << " joined " << name << std::endl;
+	if (isNew)
+		std::cout << "Created new channel: " << name << std::endl;
+	else
+		std::cout << client->getNickname() << " joined existing channel: " << name << std::endl;
 }

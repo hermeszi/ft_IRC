@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/02 20:40:40 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/09 16:02:37 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -74,4 +74,18 @@ void	Channel::broadcast(std::string message, Client *exclude)
 bool	Channel::isEmpty() const
 {
 	return (_members.empty());
+}
+
+std::string	Channel::getUserList()
+{
+	std::string	list;
+	for (size_t x = 0; x < _members.size(); x++)
+	{
+		if (x > 0)
+			list += " ";
+		if (isOperator(_members[x]))
+			list += "@";
+		list += _members[x]->getNickname();
+	}
+	return (list);
 }
