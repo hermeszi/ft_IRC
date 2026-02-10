@@ -194,22 +194,22 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 1. poll()  Wait for events on any file descriptor in the list.
 2. Check revents & POLLIN → Identify which FD has data ready to read.
 3. If FD is _server_fd (New Connection):
-'''
+```
     accept() → Create a new connection FD for the client.
     fcntl() → Set the new client FD to O_NONBLOCK.
     New Client Object → Store client data (IP, FD) in _clients map.
     Update pollfds → Add the new FD to the poll array to watch for messages.
-'''
+```
 
 4. If FD is a Client FD (Existing Connection):
-'''
+```
     recv() → Read incoming bytes into a temporary buffer.
     Check for Disconnect → If recv returns ≤0, run closeClient() and remove from the poll array.
     appendBuffer() → Add raw data to the specific Client object's buffer.
     hasLine() / extractLine() → Loop through the buffer to find complete messages (ending in \n).
     parseMessage() → Process each extracted command (e.g., NICK, JOIN, PRIVMSG).
     Check for Removal → If the command (like QUIT) closed the connection, remove the FD from the poll array immediately.
-'''
+```
 
 ##### - Client -
 1. socket()  → Create socket fd
