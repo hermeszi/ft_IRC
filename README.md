@@ -2,6 +2,16 @@
 
 # 📟 ft_irc
 
+## mingde's comment
+**can add 0_NONBLOCK to any exisitng flags**
+int flags = fcntl(sockfd, F_GETFL, 0);
+fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // Set non-blocking
+
+**throw in server init instead of exit (← Doesn't call destructor)**
+if (_server_fd < 0)
+    throw std::runtime_error("socket creation failed");
+
+
 ## 📜 Description
 
 **ft_irc** is a 42 School project where you build a minimal IRC (Internet Relay Chat) server in **C++ (C++98)**.
