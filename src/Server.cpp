@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/09 16:17:14 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/10 19:48:23 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <csignal>
 #include <sstream>
+#include <stdexcept>
 
 bool	g_stop = false;
 
@@ -64,38 +65,26 @@ void	Server::init()
 {
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_fd < 0)
-	{
-		std::cerr << "Error: socket creation failed" << std::endl;
-		exit(1);
-	}
+		throw std::runtime_error("Error: socket creation failed");
 	int	opt = 1;
 	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-	{
-		std::cerr << "Error: setsockopt failed" << std::endl;
-		exit(1);
-	}
-	if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0)
-	{
-		std::cerr << "Error: fcntl failed" << std::endl;
-		exit(1);
-	}
+		throw std::runtime_error("Error: setsockopt failed");
+	int	flags = fcntl(_server_fd, F_GETFL, 0);
+	if (flags == -1)
+		throw std::runtime_error("Error: fcntl F_GETFL failed");
+	if (fcntl(_server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		throw std::runtime_error("Error: fcntl F_SETFL failed");
 	struct	sockaddr_in address;
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(_port);
 	if (bind(_server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
-	{
-		std::cerr << "Error: bind failed" << std::endl;
-		exit(1);
-	}
+		throw std::runtime_error("Error: bind failed");
 	if (listen(_server_fd, 3) < 0)
-	{
-		std::cerr << "Error: listen failed" << std::endl;
-		exit(1);
-	}
+		throw std::runtime_error("Error: listen failed");
 	signal(SIGINT, handle_signal);
 	signal(SIGQUIT, handle_signal);
-	struct pollfd pfd;
+    struct	pollfd pfd;
 	pfd.fd = _server_fd;
 	pfd.events = POLLIN;
 	pfd.revents = 0;
@@ -127,7 +116,8 @@ void	Server::run()
 					int	new_fd = accept(_server_fd, (struct sockaddr *)&client_addr, &client_len);
 					if (new_fd >= 0)
 					{
-						if (fcntl(new_fd, F_SETFL, O_NONBLOCK) < 0)
+						int	flags = fcntl(new_fd, F_GETFL, 0);
+						if (flags == -1 || fcntl(new_fd, F_SETFL, flags | O_NONBLOCK) < 0)
 						{
 							std::cerr << "Error: fcntl on client failed" << std::endl;
 							close(new_fd);
