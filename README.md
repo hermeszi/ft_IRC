@@ -181,14 +181,35 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ### 👶 Basic Socket event loop
 
-##### - Server -
-1. socket()  → Create socket fd
-2. bind()    → Attach to port
-3. listen()  → Mark as passive (accepting connections)
-4. accept()  → Wait for client, get connection fd
-5. recv()    → Read data from client
-6. send()    → Write data to client
-7. close()   → Clean up
+##### - Server init -
+1. __socket()__  → Create socket fd
+2. setsockopt() // set port to be released after exit (faster testing)
+3. fcntl() // Non-blocking
+4. __bind()__    → Attach to port
+5. __listen()__  → Mark as passive (accepting connections)
+6. signal() // Signal handlers
+7. //Add to poll array
+
+##### - Server run -
+1. poll()  Wait for events on any file descriptor in the list.
+2. Check revents & POLLIN → Identify which FD has data ready to read.
+3. If FD is _server_fd (New Connection):
+'''
+    accept() → Create a new connection FD for the client.
+    fcntl() → Set the new client FD to O_NONBLOCK.
+    New Client Object → Store client data (IP, FD) in _clients map.
+    Update pollfds → Add the new FD to the poll array to watch for messages.
+'''
+
+4. If FD is a Client FD (Existing Connection):
+'''
+    recv() → Read incoming bytes into a temporary buffer.
+    Check for Disconnect → If recv returns ≤0, run closeClient() and remove from the poll array.
+    appendBuffer() → Add raw data to the specific Client object's buffer.
+    hasLine() / extractLine() → Loop through the buffer to find complete messages (ending in \n).
+    parseMessage() → Process each extracted command (e.g., NICK, JOIN, PRIVMSG).
+    Check for Removal → If the command (like QUIT) closed the connection, remove the FD from the poll array immediately.
+'''
 
 ##### - Client -
 1. socket()  → Create socket fd
