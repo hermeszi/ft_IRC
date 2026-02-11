@@ -254,10 +254,13 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ### IRC protocol references
 
+* Chirc Tutorial - http://chi.cs.uchicago.edu/chirc/irc.html
+* Modern IRC Client Protocol: A more readable guide to how modern clients interact with servers https://ircdocs.horse/specs/
+
 * RFC 1459 — Internet Relay Chat Protocol (classic reference) https://tools.ietf.org/html/rfc1459
 * RFC 2812 — Internet Relay Chat: Client Protocol https://tools.ietf.org/html/rfc2812
 * RFC 2813 — Internet Relay Chat: Server Protocol (extra context)
-* Modern IRC Client Protocol: A more readable guide to how modern clients interact with servers https://ircdocs.horse/specs/
+
 * Beej's Guide to Network Programming: A classic reference for socket programming https://beej.us/guide/bgnet/
 
 ### Socket programming / multiplexing
