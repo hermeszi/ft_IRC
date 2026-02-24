@@ -13,6 +13,14 @@ fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // Set non-blocking
 if (_server_fd < 0)
     throw std::runtime_error("socket creation failed");
 ```
+**_executeNICK() validation?**
+```
+if user set nick to NICK #user
+Would this break the PRIVMSG routing? (using '#' as indicitor of channel)
+suggest no leading # and : character 
+
+https://modern.ircdocs.horse/#nick-message
+```
 
 ## 📜 Description
 
