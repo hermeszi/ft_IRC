@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by banana1🍌, banana2🍌.
+*This project has been created as part of the 42 curriculum by jngew🍌, myuen🍌.
 
 # 📟 ft_irc
 
@@ -424,8 +424,8 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ## Authors
 
-* banana1🍌
-* banana2🍌
+* jngew🍌
+* myuen🍌
 
 ---
 
