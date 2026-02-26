@@ -1,1 +1,3 @@
-.vscode/
+.cursor/
+.clangd
+.DS_Store
