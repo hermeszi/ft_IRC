@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:00:55 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/09 16:03:27 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/26 21:15:10 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -52,6 +52,7 @@ class	Server
 				void	_executePRIVMSG(Client *client, std::string arg);
 				void	_executeQUIT(Client *client, std::string arg);
 				void	_executeJOIN(Client *client, std::string arg);
+				void	_executeKICK(Client *client, std::string arg);
 				Client	*_getClientByNick(std::string nick);
 
 				Server(const Server &src);

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Channel.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 19:56:36 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 17:21:37 by myuen            ###   ########.fr       */
+/*   Updated: 2026/02/26 21:23:29 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,9 +42,9 @@ class	Channel
 
 				std::string _topic;              	// For TOPIC command
         		std::string _password;           	// For MODE +k
-        		bool _inviteOnly;                	// For MODE +i
-        		bool _topicRestricted;           	// For MODE +t
-        		int _userLimit;                  	// For MODE +l (-1 = no limit)
+        		//bool _inviteOnly;                	// For MODE +i
+        		//bool _topicRestricted;           	// For MODE +t
+        		//int _userLimit;                  	// For MODE +l (-1 = no limit)
         		std::vector<Client *> _inviteList;  // For INVITE command
 };
 

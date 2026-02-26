@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 19:54:14 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/26 21:22:28 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -237,6 +237,8 @@ void	Server::parseMessage(std::string message, int fd)
 		_executeQUIT(client, arg);
 	else if (command == "JOIN")
 		_executeJOIN(client, arg);
+	else if (command == "KICK")
+		_executeKICK(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -466,4 +468,71 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		std::cout << "Created new channel: " << name << std::endl;
 	else
 		std::cout << client->getNickname() << " joined existing channel: " << name << std::endl;
+}
+
+void	Server::_executeKICK(Client *client, std::string arg)
+{
+	if (arg.empty())
+	{
+		std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	std::stringstream ss(arg);
+	std::string channelName;
+	std::string targetUser;
+	std::string reason;
+	ss >> channelName >> targetUser;
+	std::getline(ss, reason);
+	if (channelName.empty() || targetUser.empty())
+	{
+		std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	if (!reason.empty() && reason[0] == ' ')
+		reason.erase(0, 1);
+	if (!reason.empty() && reason[0] == ':')
+		reason = reason.substr(1);
+	if (reason.empty())
+		reason = "Kicked from channel";
+	if (_channels.find(channelName) == _channels.end())
+	{
+		std::string err = ":irc_server 403 " + channelName + " :No such channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	Channel *channel = _channels[channelName];
+	if (!channel->isMember(client))
+	{
+		std::string err = ":irc_server 442 " + channelName + " :You're not on that channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	if (!channel->isOperator(client))
+	{
+		std::string err = ":irc_server 482 " + channelName + " :You're not channel operator\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	Client *target = _getClientByNick(targetUser);
+	if (!target || !channel->isMember(target))
+	{
+		std::string err = ":irc_server 441 " + targetUser + " " + channelName + " :They aren't on that channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	std::string kickMsg = ":" + client->getPrefix() + " KICK " + channelName + " " + targetUser + " :" + reason + "\r\n";
+	channel->broadcast(kickMsg, NULL);
+	channel->removeMember(target);
+	if (channel->isEmpty())
+	{
+		delete channel;
+		_channels.erase(channelName);
+		std::cout << "Channel " << channelName << " deleted (empty)." << std::endl;
+	}
+	else
+	{
+		std::cout << targetUser << " was kicked from " << channelName << " by " << client->getNickname() << std::endl;
+	}
 }
