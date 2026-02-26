@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
+/*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/09 16:19:53 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/26 22:08:32 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,4 +90,15 @@ std::string	Channel::getUserList()
 		list += _members[x]->getNickname();
 	}
 	return (list);
+}
+bool	Channel::hasOperators() const
+{
+	return !_operators.empty();
+}
+
+Client* Channel::getFirstMember() const
+{
+    if (_members.empty())
+		return NULL;
+    return _members[0];
 }

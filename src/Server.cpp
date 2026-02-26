@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
+/*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 21:22:28 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/26 22:31:03 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -468,6 +468,85 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		std::cout << "Created new channel: " << name << std::endl;
 	else
 		std::cout << client->getNickname() << " joined existing channel: " << name << std::endl;
+}
+
+void Server::_executePART(Client *client, std::string arg)
+{
+	// TODO: Support multiple channels (comma-separated)
+    // For now: single channel only
+    // Future: parseChannelList(arg) returns vector<string>
+	if (arg.empty())
+	{
+		std::string err = ":irc_server 461 PART :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	
+	size_t spacePos = arg.find(' ');
+	std::string channelName = "";
+	std::string reason = "";
+
+	if (spacePos == std::string::npos)
+	{
+    	channelName = arg;
+    	reason = "";
+	}
+	else
+	{
+    	channelName = arg.substr(0, spacePos);
+    	std::string rest = arg.substr(spacePos + 1);
+		if (rest[0] == ':')
+		{
+			reason = rest.substr(1);
+		}
+		else
+		{
+			reason = rest;
+		}
+	}
+	if (channelName[0] != '#')
+		channelName = "#" + channelName;
+	if (_channels.find(channelName) == _channels.end())
+	{
+		std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	else
+	{
+		Channel	*channel;
+		channel = _channels.at(channelName);
+		
+		if (!channel->isMember(client))
+		{
+    		std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+    		return;
+		}
+
+		std::string partMsg = ":" + client->getPrefix() + " PART :" + reason + "\r\n";
+		channel->broadcast(partMsg, client);
+    
+		channel->removeMember(client);
+		if (channel->isEmpty())
+		{
+			delete channel;
+			_channels.erase(channelName);
+			return ;
+		}
+		else
+		{
+			if (!channel->hasOperators())
+			{
+				Client *newOp = channel->getFirstMember();
+				channel->addOperator(newOp);
+				//MODE #channel +o nickname
+				std::string modeMsg = ":irc_server MODE " + channelName + " +o " + newOp->getNickname() + "\r\n";
+    			channel->broadcast(modeMsg, NULL);
+			}
+		}
+		return ;
+	}
 }
 
 void	Server::_executeKICK(Client *client, std::string arg)
