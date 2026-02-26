@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 19:48:30 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/26 19:54:14 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -84,6 +84,7 @@ void	Server::init()
 		throw std::runtime_error("Error: listen failed");
 	signal(SIGINT, handle_signal);
 	signal(SIGQUIT, handle_signal);
+	signal(SIGPIPE, SIG_IGN);
     struct	pollfd pfd;
 	pfd.fd = _server_fd;
 	pfd.events = POLLIN;
