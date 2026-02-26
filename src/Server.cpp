@@ -6,7 +6,7 @@
 /*   By: jngew <jngew@student.42singapore.sg>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/10 19:48:23 by jngew            ###   ########.fr       */
+/*   Updated: 2026/02/26 19:48:30 by jngew            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -274,6 +274,12 @@ void	Server::_executeNICK(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
+	if (arg.find(' ') != std::string::npos || arg[0] == '#' || arg[0] == ':' || arg[0] == '&' || std::isdigit(arg[0]))
+	{
+		std::string err = ":irc_server 432 * " + arg + " :Erroneous nickname\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
 	for (std::map<int, Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it)
 	{
 		if (it->second == client)
@@ -352,6 +358,12 @@ void	Server::_executePRIVMSG(Client *client, std::string arg)
 	std::string message = arg.substr(spacePos + 1);
 	if (!message.empty() && message[0] == ':')
 		message = message.substr(1);
+	if (target.empty() || message.empty())
+	{
+		std::string err = ":irc_server 412 :No text to send or invalid target\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
 	if (target[0] == '#')
 	{
 		if (_channels.find(target) != _channels.end())
@@ -438,7 +450,7 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		return ;
 	channel->addMember(client);
 	std::string joinMsg = ":" + client->getPrefix() + " JOIN :" + name + "\r\n";
-	channel->broadcast(joinMsg, NULL);
+	channel->broadcast(joinMsg, client);
 	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 
 	// 5. Send Topic (RPL_TOPIC 332) - Empty for now
