@@ -69,17 +69,7 @@ channel->broadcast(joinMsg, client);
 
 **ft_irc** is a 42 School project where you build a minimal IRC (Internet Relay Chat) server in **C++ (C++98)**.
 
-**Goal:** implement a working IRC server that can accept multiple clients, handle core IRC commands, and allow users to chat in channels—without relying on external IRC server code.
-
-**Overview:**
-
-* A TCP server that listens on a port
-* Handles multiple clients concurrently (non-blocking I/O + `poll()`/`select()` depending on your implementation)
-* Parses IRC messages (`\r\n` terminated)
-* Supports a subset of IRC commands (as required by the subject)
-* Manages users, nicknames, channels, and permissions (operators, invites, topics, etc.)
-
-> UPDATING
+**Goal:** implement a mini working IRC server that can accept multiple clients, handle core IRC commands, and allow users to chat in channels.
 
 ---
 
@@ -159,18 +149,7 @@ Channel
 Network → poll() → recv() → Client buffer → extractLine() → parseMessage() → Command handlers
 ```
 
-### Key Relationships
-
-- **Server** manages all clients and channels
-- **Client** represents individual user connection
-- **Channel** manages members and operators
-- Operators are always a subset of members
-- First channel member automatically becomes operator
-```
-
 ---
-
-## Instructions
 
 ### Requirements
 
