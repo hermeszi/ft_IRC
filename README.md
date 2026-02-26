@@ -85,29 +85,28 @@ channel->broadcast(joinMsg, client);
 
 ## Features
 
-<still populating>
+**Core IRC Server**
+- Multi-client support with non-blocking I/O
+- User authentication and registration
+- Channel creation and management
+- Private and channel messaging
+- Operator privileges and channel controls
 
-**Networking & I/O**
+**Implemented Commands**
+- Authentication: `PASS`, `NICK`, `USER`
+- Channels: `JOIN`, `QUIT`
+- Messaging: `PRIVMSG`, `PING`/`PONG`
 
-* [ ] Non-blocking sockets
-* [ ] `poll()` based event loop
-* [ ] Partial read buffering + message framing (`\r\n`)
-* [ ] Graceful disconnect handling
-
-**Core IRC behavior**
-
-* [ ] Password authentication (`PASS`)
-* [ ] Nickname and user registration (`NICK`, `USER`)
-* [ ] Join/leave channels (`JOIN`, `PART`)
-* [ ] Private and channel messages (`PRIVMSG`)
-* [ ] Channel modes (e.g. `+i`, `+t`, `+k`, `+o`, `+l`) as required
-* [ ] Operator actions (kick/invite/topic)
+**Channel Operator Commands** *(in progress)*
+- `PART` - Leave channel
+- `KICK` - Remove user from channel
+- `INVITE` - Invite user to channel
+- `TOPIC` - View/change channel topic
+- `MODE` - Channel modes (i, t, k, o, l)
 
 ---
 
-## Project Structure
-
-A simple example layout (tentative):
+## File Structure
 
 ```
 .
