@@ -13,7 +13,7 @@ fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // Set non-blocking
 if (_server_fd < 0)
     throw std::runtime_error("socket creation failed");
 ```
-**_executeNICK() validation + nick validation conflict**
+**_executeNICK() validation + msg validation conflict**
 ```
 if user set nick to NICK #user
 This break the PRIVMSG routing (using '#' as indicitor of channel)
@@ -38,6 +38,32 @@ Suggestion in _executeNick() before check for duplicates, check
 2. Check for invalid leading characters
 3. Check for invalid characters anywhere
 ```
+
+**_executePRIVMSG validation**
+```
+TEST CASE:
+PRIVMSG  :hello (two spaces).
+
+before 
+if (target[0] == '#')
+
+need to check
+if (target.empty())
+        // user entered space, target[0] is undefined
+...    
+if (message.empty())
+```
+
+**_executeJOIN**
+```
+channel->broadcast(joinMsg, NULL);  // sends to all
+so 
+send(client->getFd(), joinMsg, ...);  //send to current client again
+
+Suggest:
+channel->broadcast(joinMsg, client); 
+```
+
 
 ## 📜 Description
 
@@ -186,12 +212,12 @@ PRIVMSG #test :hello
 
 | Command | Status | Notes                      |
 | ------- | -----: | -------------------------- |
-| PASS    |      ⬜ | Required for registration? |
-| NICK    |      ⬜ | Nick collision handling    |
-| USER    |      ⬜ | Registration flow          |
+| PASS    |      ✅ | Required for registration? |
+| NICK    |      🟨 | Nick collision handling    |
+| USER    |      ✅ | Registration flow          |
 | JOIN    |      ⬜ | Channel creation rules     |
 | PART    |      ⬜ |                            |
-| PRIVMSG |      ⬜ | Private + channel messages |
+| PRIVMSG |      🟨 | Private + channel messages |
 | KICK    |      ⬜ |                            |
 | INVITE  |      ⬜ |                            |
 | TOPIC   |      ⬜ |                            |
