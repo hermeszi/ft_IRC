@@ -129,6 +129,45 @@ A simple example layout (tentative):
 │   └── ...
 └── README.md
 ```
+### Class Structure
+```
+Server
+├── _port (int)                         // Port number for server
+├── _server_fd (int)                    // Server listening socket fd
+├── _password (string)                  // Server connection password
+├── _pollfds (vector<pollfd>)           // All file descriptors being monitored
+├── _clients (map<int, Client*>)        // fd → Client object mapping
+└── _channels (map<string, Channel*>)   // channel name → Channel object mapping
+
+Client
+├── _fd (int)                           // Client socket file descriptor
+├── _ipAddr (string)                    // Client IP address
+├── _buffer (string)                    // Accumulates partial messages
+├── _nickname (string)                  // User's nickname
+├── _username (string)                  // User's username
+├── _realname (string)                  // User's real name
+├── _isRegistered (bool)                // Registration complete flag
+└── _hasPassword (bool)                 // Password verified flag
+
+Channel
+├── _name (string)                      // Channel name (starts with #)
+├── _members (vector<Client*>)          // All users in channel
+└── _operators (vector<Client*>)        // Subset with operator privileges
+```
+
+### Data Flow
+```
+Network → poll() → recv() → Client buffer → extractLine() → parseMessage() → Command handlers
+```
+
+### Key Relationships
+
+- **Server** manages all clients and channels
+- **Client** represents individual user connection
+- **Channel** manages members and operators
+- Operators are always a subset of members
+- First channel member automatically becomes operator
+```
 
 ---
 
