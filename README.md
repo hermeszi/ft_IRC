@@ -2,7 +2,7 @@
 
 # 📟 ft_irc
 
-## mingde's comment
+## mingde's comment & notes
 **can add 0_NONBLOCK to any exisitng flags**
 ```
 int flags = fcntl(sockfd, F_GETFL, 0);
@@ -13,13 +13,30 @@ fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // Set non-blocking
 if (_server_fd < 0)
     throw std::runtime_error("socket creation failed");
 ```
-**_executeNICK() validation?**
+**_executeNICK() validation + nick validation conflict**
 ```
 if user set nick to NICK #user
-Would this break the PRIVMSG routing? (using '#' as indicitor of channel)
-suggest no leading # and : character 
+This break the PRIVMSG routing (using '#' as indicitor of channel)
+
+If user set nick to contain space...etc break the parsing.
+
+Example:
+PRIVMSG  <space><space>:hello
+
+***IRC Nickname Rules (RFC 1459)
+Valid nicknames:
+
+1. Must start with a letter (A-Z, a-z)
+2. Can contain: letters, digits (0-9), and special chars: []\ -_{|}^
+
+Therefore, cannot start with: digit, #, :, space, @, &
 
 https://modern.ircdocs.horse/#nick-message
+
+Suggestion in _executeNick() before check for duplicates, check
+1. Check length
+2. Check for invalid leading characters
+3. Check for invalid characters anywhere
 ```
 
 ## 📜 Description
