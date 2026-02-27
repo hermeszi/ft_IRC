@@ -627,7 +627,7 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-    
+
     //Parse: Is there a topic to SET, or just VIEW?
 	size_t spacePos = arg.find(' ');
 	std::string channelName = "";
@@ -642,7 +642,7 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 	{
     	channelName = arg.substr(0, spacePos);
     	std::string rest = arg.substr(spacePos + 1);
-		if (rest[0] == ':')
+		if (!rest.empty() && rest[0] == ':')
 		{
 			newTopic = rest.substr(1);
 		}
@@ -671,12 +671,12 @@ void Server::_executeTOPIC(Client *client, std::string arg)
     		return;
 		}
 
-		if (newTopic.empty())
+		if (spacePos == std::string::npos)
 		{
 			//    TOPIC #general   → VIEW
 			if (channel->getTopic().empty())
 			{
-				std::string reply = ":irc_server 331 " + client->getNickname() + " #" + channel->getName() + " :No topic is set\r\n";
+				std::string reply = ":irc_server 331 " + client->getNickname() + " " + channel->getName() + " :No topic is set\r\n";
 				send(client->getFd(), reply.c_str(), reply.length(), 0);
 				return ;
 			}
@@ -686,13 +686,13 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 				send(client->getFd(), reply.c_str(), reply.length(), 0);
 				return ;
 			}
-    		
+
 		}
 		else
 		{
 			//    TOPIC #general :New text → SET
 			if (channel->isTopicRestricted() && !channel->isOperator(client))
-			{	
+			{
 				std::string err = ":irc_server 482 " + client->getNickname() + " " + channel->getName() + " :You're not channel operator\r\n";
 				send(client->getFd(), err.c_str(), err.length(), 0);
 				return ;
