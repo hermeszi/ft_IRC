@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 22:08:32 by myuen            ###   ########.fr       */
+/*   Updated: 2026/02/27 20:21:28 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,9 +14,13 @@
 #include <algorithm>
 #include <sys/socket.h>
 
-Channel::Channel(std::string name) : _name(name) {}
+Channel::Channel(std::string name) :
+_name(name),
+_topicRestricted(false), // anyone can change topic
+_inviteOnly(false),
+_userLimit(-1){}
 
-Channel::~Channel() {}
+Channel::Channel() {}
 
 std::string Channel::getName() const
 {
@@ -101,4 +105,19 @@ Client* Channel::getFirstMember() const
     if (_members.empty())
 		return NULL;
     return _members[0];
+}
+
+bool Channel::isTopicRestricted() const
+{
+	return _topicRestricted;
+}
+
+std::string Channel::getTopic() const
+{
+	return _topic;
+}
+
+void Channel::setTopic(std::string topic)
+{
+	_topic = topic;
 }
