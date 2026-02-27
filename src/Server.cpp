@@ -481,7 +481,7 @@ void Server::_executePART(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	
+
 	size_t spacePos = arg.find(' ');
 	std::string channelName = "";
 	std::string reason = "";
@@ -516,7 +516,7 @@ void Server::_executePART(Client *client, std::string arg)
 	{
 		Channel	*channel;
 		channel = _channels.at(channelName);
-		
+
 		if (!channel->isMember(client))
 		{
     		std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
@@ -524,9 +524,9 @@ void Server::_executePART(Client *client, std::string arg)
     		return;
 		}
 
-		std::string partMsg = ":" + client->getPrefix() + " PART :" + reason + "\r\n";
-		channel->broadcast(partMsg, client);
-    
+		std::string partMsg = ":" + client->getPrefix() + " PART " + channelName + " :" + reason + "\r\n";
+		channel->broadcast(partMsg, NULL);
+
 		channel->removeMember(client);
 		if (channel->isEmpty())
 		{
