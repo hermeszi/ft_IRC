@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 19:56:36 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 22:31:48 by myuen            ###   ########.fr       */
+/*   Updated: 2026/02/27 19:43:18 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,6 +35,9 @@ public:
 	std::string	getUserList();
 	bool 		hasOperators() const;
 	Client* 	getFirstMember() const;
+	bool		isTopicRestricted() const;
+	std::string	getTopic() const;
+	void		setTopic(std::string topic);
 	
 	void		broadcast(std::string message, Client *exclude);
 

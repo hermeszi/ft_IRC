@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/26 22:31:03 by myuen            ###   ########.fr       */
+/*   Updated: 2026/02/27 20:14:59 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -239,6 +239,10 @@ void	Server::parseMessage(std::string message, int fd)
 		_executeJOIN(client, arg);
 	else if (command == "KICK")
 		_executeKICK(client, arg);
+	else if (command == "PART")
+		_executePART(client, arg);
+	else if (command == "TOPIC")
+		_executeTOPIC(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -613,5 +617,92 @@ void	Server::_executeKICK(Client *client, std::string arg)
 	else
 	{
 		std::cout << targetUser << " was kicked from " << channelName << " by " << client->getNickname() << std::endl;
+	}
+}
+void Server::_executeTOPIC(Client *client, std::string arg)
+{
+    if (arg.empty())
+	{
+		std::string err = ":irc_server 461 TOPIC :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+    
+    //Parse: Is there a topic to SET, or just VIEW?
+	size_t spacePos = arg.find(' ');
+	std::string channelName = "";
+	std::string newTopic = "";
+
+	if (spacePos == std::string::npos)
+	{
+    	channelName = arg;
+    	newTopic = "";
+	}
+	else
+	{
+    	channelName = arg.substr(0, spacePos);
+    	std::string rest = arg.substr(spacePos + 1);
+		if (rest[0] == ':')
+		{
+			newTopic = rest.substr(1);
+		}
+		else
+		{
+			newTopic = rest;
+		}
+	}
+	if (channelName[0] != '#')
+		channelName = "#" + channelName;
+	if (_channels.find(channelName) == _channels.end())
+	{
+		std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	else
+	{
+		Channel	*channel;
+		channel = _channels.at(channelName);
+
+		if (!channel->isMember(client))
+		{
+    		std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+    		return;
+		}
+
+		if (newTopic.empty())
+		{
+			//    TOPIC #general   → VIEW
+			if (channel->getTopic().empty())
+			{
+				std::string reply = ":irc_server 331 " + client->getNickname() + " #" + channel->getName() + " :No topic is set\r\n";
+				send(client->getFd(), reply.c_str(), reply.length(), 0);
+				return ;
+			}
+			else
+			{
+				std::string reply = ":irc_server 332 " + client->getNickname() + " " + channel->getName() + " :" + channel->getTopic() + "\r\n";
+				send(client->getFd(), reply.c_str(), reply.length(), 0);
+				return ;
+			}
+    		
+		}
+		else
+		{
+			//    TOPIC #general :New text → SET
+			if (channel->isTopicRestricted() && !channel->isOperator(client))
+			{	
+				std::string err = ":irc_server 482 " + client->getNickname() + " " + channel->getName() + " :You're not channel operator\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
+			else
+			{
+				channel->setTopic(newTopic);
+				std::string topicMsg = ":" + client->getPrefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
+				channel->broadcast(topicMsg, NULL);
+			}
+		}
 	}
 }
