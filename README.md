@@ -230,16 +230,16 @@ PRIVMSG #test :hello
 | Command | Status | Notes                      |
 | ------- | -----: | -------------------------- |
 | PASS    |      ✅ | Required for registration? |
-| NICK    |      🟨 | Nick collision handling    |
+| NICK    |      ✅ | Nick collision handling    |
 | USER    |      ✅ | Registration flow          |
-| JOIN    |      ⬜ | Channel creation rules     |
-| PART    |      ⬜ |                            |
-| PRIVMSG |      🟨 | Private + channel messages |
-| KICK    |      ⬜ |                            |
+| JOIN    |      🟨 | Channel creation rules     |
+| PART    |      🟨 |                            |
+| PRIVMSG |      ✅ | Private + channel messages |
+| KICK    |      ✅ |                            |
 | INVITE  |      ⬜ |                            |
-| TOPIC   |      ⬜ |                            |
+| TOPIC   |      ✅ |                            |
 | MODE    |      ⬜ | Which modes implemented    |
-| QUIT    |      ⬜ | Cleanup / broadcast quit   |
+| QUIT    |      ✅ | Cleanup / broadcast quit   |
 
 Legend: ⬜ not done, 🟨 partial, ✅ done
 
