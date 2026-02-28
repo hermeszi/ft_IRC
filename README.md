@@ -2,69 +2,6 @@
 
 # 📟 ft_irc
 
-## mingde's comment & notes
-**can add 0_NONBLOCK to any exisitng flags**
-```
-int flags = fcntl(sockfd, F_GETFL, 0);
-fcntl(sockfd, F_SETFL, flags | O_NONBLOCK); // Set non-blocking
-```
-**throw in server init instead of exit (← Doesn't call destructor)**
-```
-if (_server_fd < 0)
-    throw std::runtime_error("socket creation failed");
-```
-**_executeNICK() validation + msg validation conflict**
-```
-if user set nick to NICK #user
-This break the PRIVMSG routing (using '#' as indicitor of channel)
-
-If user set nick to contain space...etc break the parsing.
-
-Example:
-PRIVMSG  <space><space>:hello
-
-***IRC Nickname Rules (RFC 1459)
-Valid nicknames:
-
-1. Must start with a letter (A-Z, a-z)
-2. Can contain: letters, digits (0-9), and special chars: []\ -_{|}^
-
-Therefore, cannot start with: digit, #, :, space, @, &
-
-https://modern.ircdocs.horse/#nick-message
-
-Suggestion in _executeNick() before check for duplicates, check
-1. Check length
-2. Check for invalid leading characters
-3. Check for invalid characters anywhere
-```
-
-**_executePRIVMSG validation**
-```
-TEST CASE:
-PRIVMSG  :hello (two spaces).
-
-before 
-if (target[0] == '#')
-
-need to check
-if (target.empty())
-        // user entered space, target[0] is undefined
-...    
-if (message.empty())
-```
-
-**_executeJOIN**
-```
-channel->broadcast(joinMsg, NULL);  // sends to all
-so 
-send(client->getFd(), joinMsg, ...);  //send to current client again
-
-Suggest:
-channel->broadcast(joinMsg, client); 
-```
-
-
 ## 📜 Description
 
 **ft_irc** is a 42 School project where you build a minimal IRC (Internet Relay Chat) server in **C++ (C++98)**.
