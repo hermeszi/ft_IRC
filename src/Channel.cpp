@@ -134,7 +134,7 @@ void Channel::setTopicRestricted(bool value)
 
 bool Channel::isInviteOnly() const
 {
-	return _inviteOnly; 
+	return _inviteOnly;
 }
 
 void Channel::setInviteOnly(bool value)
@@ -156,6 +156,11 @@ int Channel::getUserLimit() const
 	return _userLimit;
 }
 
+size_t	Channel::getMemberCount() const
+{
+	return (_members.size());
+}
+
 bool Channel::setUserLimit(int num)
 {
 	if (num > 0)
@@ -170,7 +175,7 @@ bool Channel::setUserLimit(std::string strNum)
 	std::stringstream ss(strNum);
 	int num;
 	ss >> num;
-	ss >> std::ws; 
+	ss >> std::ws;
 	if (!ss.eof())
 	{
 		return false;

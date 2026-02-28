@@ -440,7 +440,16 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	std::string	name = arg;
+	size_t	spacePos = arg.find(' ');
+	std::string name = "";
+	std::string	password = "";
+	if (spacePos == std::string::npos)
+		name = arg;
+	else
+	{
+		name = arg.substr(0, spacePos);
+		password = arg.substr(spacePos + 1);
+	}
 	if (name[0] != '#')
 		name = "#" + name;
 	Channel	*channel;
@@ -454,7 +463,41 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		std::cout << "Created channel: " << name << std::endl;
 	}
 	else
+	{
 		channel = _channels[name];
+		// --- NEW MODE CHECKS ---
+		// Check Invite-Only (+i)
+		if (channel->isInviteOnly())
+		{
+			// TODO MINGDE: Uncomment this when you finish the isInvited function!
+			// if (!channel->isInvited(client))
+			// {
+			// 	std::string err = ":irc_server 473 " + client->getNickname() + " " + name + " :Cannot join channel (+i)\r\n";
+			// 	send(client->getFd(), err.c_str(), err.length(), 0);
+			// 	return ;
+			// }
+		}
+		// Check Password (+k)
+		if (!channel->getPassword().empty())
+		{
+			if (password != channel->getPassword())
+			{
+				std::string err = ":irc_server 475 " + client->getNickname() + " " + name + " :Cannot join channel (+k)\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
+		}
+		// Check User Limit (+l)
+		if (channel->getUserLimit() > 0)
+		{
+			if (static_cast<int>(channel->getMemberCount()) >= channel->getUserLimit())
+			{
+				std::string err = ":irc_server 471 " + client->getNickname() + " " + name + " :Cannot join channel (+l)\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
+		}
+	}
 	if (channel->isMember(client))
 		return ;
 	channel->addMember(client);
@@ -736,7 +779,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 			modeStr = rest;
 		}
 	}
-	
+
 	spacePos = modeStr.find(' ');
 	std::string parameter = "";
 	std::string	modeFlag = "";
@@ -755,7 +798,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 		}
 
 	}
-	
+
 	if (channelName[0] != '#')
 		channelName = "#" + channelName;
 	if (_channels.find(channelName) == _channels.end())
@@ -799,7 +842,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 				channel->setTopicRestricted(false);
 				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " -t\r\n";
 				channel->broadcast(msg, NULL);
-				
+
 			}
 			else if (flag == 'i')
 			{
@@ -821,7 +864,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 					send(client->getFd(), err.c_str(), err.length(), 0);
 					return;
 				}
-				
+
 				Client *target = _getClientByNick(parameter);
 				if (!target)
 				{
@@ -829,14 +872,14 @@ void Server::_executeMODE(Client *client, std::string arg)
 					send(client->getFd(), err.c_str(), err.length(), 0);
 					return;
 				}
-    
+
     			if (!channel->isMember(target))
     			{
 					std::string err = ":irc_server 441 " + parameter + " " + channelName + " :They aren't on that channel\r\n";
 					send(client->getFd(), err.c_str(), err.length(), 0);
 					return ;
     			}
-    
+
 				channel->removeOperator(target);
 				std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -o " + target->getNickname() + "\r\n";
     			channel->broadcast(modeMsg, NULL);
@@ -853,7 +896,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 				send(client->getFd(), err.c_str(), err.length(), 0);
 				return ;
 			}
-		
+
 		}
 		else if (action == '+')// Add a mode
 		{
@@ -862,7 +905,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 				channel->setTopicRestricted(true);
 				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " +t\r\n";
 				channel->broadcast(msg, NULL);
-				
+
 			}
 			else if (flag == 'i')
 			{
@@ -880,7 +923,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 				}
 				channel->setPassword(parameter);
 				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " +k "+ channel->getPassword() + "\r\n";
-				channel->broadcast(msg, NULL);				
+				channel->broadcast(msg, NULL);
 			}
 			else if (flag == 'o')
 			{
@@ -890,7 +933,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 					send(client->getFd(), err.c_str(), err.length(), 0);
 					return;
 				}
-				
+
 				Client *target = _getClientByNick(parameter);
 				if (!target)
 				{
@@ -898,14 +941,14 @@ void Server::_executeMODE(Client *client, std::string arg)
 					send(client->getFd(), err.c_str(), err.length(), 0);
 					return;
 				}
-    
+
     			if (!channel->isMember(target))
     			{
 					std::string err = ":irc_server 441 " + parameter + " " + channelName + " :They aren't on that channel\r\n";
 					send(client->getFd(), err.c_str(), err.length(), 0);
 					return ;
     			}
-    
+
 				channel->addOperator(target);
 				std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " +o " + target->getNickname() + "\r\n";
     			channel->broadcast(modeMsg, NULL);
@@ -918,7 +961,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 					send(client->getFd(), err.c_str(), err.length(), 0);
             		return;
         		}
-        
+
         		if (!channel->setUserLimit(parameter))
         		{
             		std::string err = ":irc_server 461 " + client->getNickname() + " MODE +l :Not enough parameters\r\n";

@@ -45,9 +45,10 @@ public:
 	std::string	getPassword() const;
 	void		setPassword(std::string password);
 	int			getUserLimit() const;
+	size_t		getMemberCount() const;
 	bool		setUserLimit(int num);
 	bool		setUserLimit(std::string strNum);
-	
+
 	void		broadcast(std::string message, Client *exclude);
 
 private:
