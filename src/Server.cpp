@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/27 20:14:59 by myuen            ###   ########.fr       */
+/*   Updated: 2026/02/28 22:02:40 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -215,7 +215,7 @@ void	Server::parseMessage(std::string message, int fd)
 	std::string command;
 	ss >> command;
 	for (size_t x = 0; x < command.length(); x++)
-		command[x] = std::toupper(command[x]);
+		command[x] = std::toupper(static_cast<unsigned char>(command[x]));
 	std::string	arg;
 	std::getline(ss, arg);
 	if (!arg.empty() && arg[0] == ' ')
@@ -243,6 +243,8 @@ void	Server::parseMessage(std::string message, int fd)
 		_executePART(client, arg);
 	else if (command == "TOPIC")
 		_executeTOPIC(client, arg);
+	else if (command == "MODE")
+       _executeMODE(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -499,7 +501,7 @@ void Server::_executePART(Client *client, std::string arg)
 	{
     	channelName = arg.substr(0, spacePos);
     	std::string rest = arg.substr(spacePos + 1);
-		if (rest[0] == ':')
+		if (!rest.empty() && rest[0] == ':')
 		{
 			reason = rest.substr(1);
 		}
@@ -703,6 +705,241 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 				std::string topicMsg = ":" + client->getPrefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
 				channel->broadcast(topicMsg, NULL);
 			}
+		}
+	}
+}
+
+void Server::_executeMODE(Client *client, std::string arg)
+{
+	if (arg.empty())
+	{
+		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	// Parse: "arg" could be "#general +t" or "#general -t"
+	size_t spacePos = arg.find(' ');
+	std::string channelName = "";
+	std::string modeStr= "";
+
+	if (spacePos == std::string::npos)
+	{
+    	channelName = arg;
+    	modeStr = "";
+	}
+	else
+	{
+    	channelName = arg.substr(0, spacePos);
+    	std::string rest = arg.substr(spacePos + 1);
+		if (!rest.empty())
+		{
+			modeStr = rest;
+		}
+	}
+	
+	spacePos = modeStr.find(' ');
+	std::string parameter = "";
+	std::string	modeFlag = "";
+	if (spacePos == std::string::npos)
+	{
+    	modeFlag = modeStr;
+    	modeStr = "";
+	}
+	else
+	{
+    	modeFlag = modeStr.substr(0, spacePos);
+    	std::string rest = modeStr.substr(spacePos + 1);
+		if (!rest.empty())
+		{
+			parameter = rest;
+		}
+
+	}
+	
+	if (channelName[0] != '#')
+		channelName = "#" + channelName;
+	if (_channels.find(channelName) == _channels.end())
+	{
+		std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	else
+	{
+		Channel	*channel;
+		channel = _channels.at(channelName);
+
+		if (!channel->isMember(client))
+		{
+    		std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+    		return ;
+		}
+
+		if (!channel->isOperator(client))
+		{
+			std::string err = ":irc_server 482 " + client->getNickname() + " " + channelName + " :You're not channel operator\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return ;
+		}
+		char action = '\0';
+		char flag = '\0';
+		if (modeFlag.size() >= 2)
+		{
+			action = modeFlag.at(0);
+			if (modeFlag[0] == '+' || modeFlag[0] == '-')
+			{
+				flag = modeFlag.at(1);
+			}
+		}
+		if (action == '-')// Removing a mode
+		{
+			if (flag == 't')
+			{
+				channel->setTopicRestricted(false);
+				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " -t\r\n";
+				channel->broadcast(msg, NULL);
+				
+			}
+			else if (flag == 'i')
+			{
+				channel->setInviteOnly(false);
+				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " -i\r\n";
+				channel->broadcast(msg, NULL);
+			}
+			else if (flag == 'k')
+			{
+				channel->setPassword("");
+				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " -k\r\n";
+				channel->broadcast(msg, NULL);
+			}
+			else if (flag == 'o')
+			{
+				if (parameter.empty())
+				{
+					std::string err = ":irc_server 461 " + client->getNickname() + " MODE -o :Not enough parameters\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return;
+				}
+				
+				Client *target = _getClientByNick(parameter);
+				if (!target)
+				{
+					std::string err = ":irc_server 401 " + parameter + " :No such nick/channel\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return;
+				}
+    
+    			if (!channel->isMember(target))
+    			{
+					std::string err = ":irc_server 441 " + parameter + " " + channelName + " :They aren't on that channel\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return ;
+    			}
+    
+				channel->removeOperator(target);
+				std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -o " + target->getNickname() + "\r\n";
+    			channel->broadcast(modeMsg, NULL);
+			}
+			else if (flag == 'l')
+			{
+				channel->setUserLimit(-1);
+				std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -l\r\n";
+    			channel->broadcast(modeMsg, NULL);
+			}
+			else
+			{
+				std::string err = ":irc_server 501 " + client->getNickname() + " " + channel->getName() + " :Unknown MODE flag\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
+		
+		}
+		else if (action == '+')// Add a mode
+		{
+			if (flag == 't')
+			{
+				channel->setTopicRestricted(true);
+				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " +t\r\n";
+				channel->broadcast(msg, NULL);
+				
+			}
+			else if (flag == 'i')
+			{
+				channel->setInviteOnly(true);
+				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " +i\r\n";
+				channel->broadcast(msg, NULL);
+			}
+			else if (flag == 'k')
+			{
+				if (parameter.empty())
+				{
+					std::string err = ":irc_server 461 " + client->getNickname() + " MODE +k :Not enough parameters\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return;
+				}
+				channel->setPassword(parameter);
+				std::string msg = ":" + client->getPrefix() + " MODE " + channelName + " +k "+ channel->getPassword() + "\r\n";
+				channel->broadcast(msg, NULL);				
+			}
+			else if (flag == 'o')
+			{
+				if (parameter.empty())
+				{
+					std::string err = ":irc_server 461 " + client->getNickname() + " MODE +o :Not enough parameters\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return;
+				}
+				
+				Client *target = _getClientByNick(parameter);
+				if (!target)
+				{
+					std::string err = ":irc_server 401 " + parameter + " :No such nick/channel\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return;
+				}
+    
+    			if (!channel->isMember(target))
+    			{
+					std::string err = ":irc_server 441 " + parameter + " " + channelName + " :They aren't on that channel\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return ;
+    			}
+    
+				channel->addOperator(target);
+				std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " +o " + target->getNickname() + "\r\n";
+    			channel->broadcast(modeMsg, NULL);
+			}
+			else if (flag == 'l')
+			{
+				if (parameter.empty())
+				{
+					std::string err = ":irc_server 461 " + client->getNickname() + " MODE +l :Not enough parameters\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+            		return;
+        		}
+        
+        		if (!channel->setUserLimit(parameter))
+        		{
+            		std::string err = ":irc_server 461 " + client->getNickname() + " MODE +l :Not enough parameters\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+            		return;
+        		}
+				std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " +l " + parameter + "\r\n";
+    			channel->broadcast(modeMsg, NULL);
+        	}
+			else
+			{
+				std::string err = ":irc_server 501 " + client->getNickname() + " " + channel->getName() + " :Unknown MODE flag\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
+		}
+		else
+		{
+			std::string err = ":irc_server 501 " + client->getNickname() + " :Unknown MODE flag\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return ;
 		}
 	}
 }
