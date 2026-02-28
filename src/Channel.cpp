@@ -6,21 +6,27 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/27 20:21:28 by myuen            ###   ########.fr       */
+/*   Updated: 2026/02/28 21:40:40 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Channel.hpp"
 #include <algorithm>
+#include <sstream>
 #include <sys/socket.h>
 
 Channel::Channel(std::string name) :
 _name(name),
-_topicRestricted(false), // anyone can change topic
+_topic(""),
+_password(""),
 _inviteOnly(false),
-_userLimit(-1){}
+_topicRestricted(false),
+_userLimit(-1)
+{}
 
-Channel::Channel() {}
+Channel::Channel(){}
+
+Channel::~Channel(){};
 
 std::string Channel::getName() const
 {
@@ -120,4 +126,63 @@ std::string Channel::getTopic() const
 void Channel::setTopic(std::string topic)
 {
 	_topic = topic;
+}
+void Channel::setTopicRestricted(bool value)
+{
+	_topicRestricted = value;
+}
+
+bool Channel::isInviteOnly() const
+{
+	return _inviteOnly; 
+}
+
+void Channel::setInviteOnly(bool value)
+{
+	_inviteOnly = value;
+}
+std::string Channel::getPassword() const
+{
+	return _password;
+}
+
+void Channel::setPassword(std::string password)
+{
+	_password = password;
+}
+
+int Channel::getUserLimit() const
+{
+	return _userLimit;
+}
+
+bool Channel::setUserLimit(int num)
+{
+	if (num > 0)
+	{
+		_userLimit = num;
+		return true;
+	}
+	return false;
+}
+bool Channel::setUserLimit(std::string strNum)
+{
+	std::stringstream ss(strNum);
+	int num;
+	ss >> num;
+	ss >> std::ws; 
+	if (!ss.eof())
+	{
+		return false;
+	}
+	if (ss.fail())
+	{
+		return false;
+	}
+	if (num > 0)
+	{
+		_userLimit = num;
+		return true;
+	}
+	return false;
 }
