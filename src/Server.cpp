@@ -191,6 +191,19 @@ void	Server::closeClient(int fd)
 					_channels.erase(temp);
 					continue ;
 				}
+				else
+				{
+					if (!channel->hasOperators())
+					{
+						Client *newOp = channel->getFirstMember();
+						if (newOp)
+						{
+							channel->addOperator(newOp);
+							std::string modeMsg = ":irc_server MODE " + channel->getName() + " +o " + newOp->getNickname() + "\r\n";
+							channel->broadcast(modeMsg, NULL);
+						}
+					}
+				}
 			}
 			++it;
 		}
@@ -317,9 +330,21 @@ void	Server::_executeUSER(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	std::stringstream ss(arg);
-	std::string username;
-	ss >> username;
+	size_t colonPos = arg.find(':');
+	std::string username = "";
+	std::string realname = "";
+	if (colonPos != std::string::npos)
+	{
+		std::string firstPart = arg.substr(0, colonPos);
+		realname = arg.substr(colonPos + 1);
+		std::stringstream ss(firstPart);
+		ss >> username;
+	}
+	else
+	{
+		std::stringstream ss(arg);
+		ss >> username;
+	}
 	if (!username.empty())
 	{
 		client->setUsername(username);
