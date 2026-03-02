@@ -505,7 +505,11 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 	channel->broadcast(joinMsg, client);
 	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 
-	// 5. Send Topic (RPL_TOPIC 332) - Empty for now
+	if (!channel->getTopic().empty())
+	{
+		std::string rpl332 = ":irc_server 332 " + client->getNickname() + " " + name + " :" + channel->getTopic() + "\r\n";
+		send(client->getFd(), rpl332.c_str(), rpl332.length(), 0);
+	}
 
 	std::string names = channel->getUserList();
 	std::string rpl353 = ":irc_server 353 " + client->getNickname() + " = " + name + " :" + names + "\r\n";
