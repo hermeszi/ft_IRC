@@ -163,13 +163,10 @@ size_t	Channel::getMemberCount() const
 
 bool Channel::setUserLimit(int num)
 {
-	if (num > 0)
-	{
 		_userLimit = num;
 		return true;
-	}
-	return false;
 }
+
 bool Channel::setUserLimit(std::string strNum)
 {
 	std::stringstream ss(strNum);
