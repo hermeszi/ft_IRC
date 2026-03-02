@@ -348,6 +348,8 @@ void	Server::_executeUSER(Client *client, std::string arg)
 	if (!username.empty())
 	{
 		client->setUsername(username);
+		if (!realname.empty())
+			client->setRealname(realname);
 		if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
 		{
 			client->setRegistered(true);
