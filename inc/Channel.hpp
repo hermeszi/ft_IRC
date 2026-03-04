@@ -48,6 +48,7 @@ public:
 	size_t		getMemberCount() const;
 	bool		setUserLimit(int num);
 	bool		setUserLimit(std::string strNum);
+	std::string	getModeString() const;
 
 	void		broadcast(std::string message, Client *exclude);
 
