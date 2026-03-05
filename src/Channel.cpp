@@ -67,7 +67,7 @@ void	Channel::removeOperator(Client *client)
 		_operators.erase(it);
 }
 
-bool	Channel::isOperator(Client *client)
+bool	Channel::isOperator(Client *client) 
 {
 	std::vector<Client *>::iterator it = std::find(_operators.begin(), _operators.end(), client);
 	return (it != _operators.end());
@@ -187,4 +187,32 @@ bool Channel::setUserLimit(std::string strNum)
 		return true;
 	}
 	return false;
+}
+
+std::string Channel::getModeString() const
+{
+    std::string flags = "+";
+    std::string params = "";
+
+    if (_topicRestricted)
+        flags += "t";
+
+    if (_inviteOnly)
+        flags += "i";
+
+    if (!_password.empty())
+    {
+        flags += "k";
+        params += " " + _password;
+    }
+
+    if (_userLimit > 0)
+    {
+        flags += "l";
+        std::stringstream ss;
+        ss << _userLimit;
+        params += " " + ss.str();
+    }
+
+    return flags + params;
 }
