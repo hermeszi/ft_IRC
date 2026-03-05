@@ -172,10 +172,10 @@ PRIVMSG #test :hello
 | JOIN    |      🟨 | Channel creation rules     |
 | PART    |      🟨 |                            |
 | PRIVMSG |      ✅ | Private + channel messages |
-| KICK    |      ✅ |                            |
+| KICK    |      🟨 |                            |
 | INVITE  |      ⬜ |                            |
 | TOPIC   |      ✅ |                            |
-| MODE    |      ⬜ | Which modes implemented    |
+| MODE    |      ✅ | Which modes implemented    |
 | QUIT    |      ✅ | Cleanup / broadcast quit   |
 
 Legend: ⬜ not done, 🟨 partial, ✅ done
