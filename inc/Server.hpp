@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:00:55 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/28 16:37:11 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/05 21:07:18 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,7 @@ class	Server
 				void	_executePART(Client *client, std::string arg);
 				void	_executeTOPIC(Client *client, std::string arg);
 				void	_executeMODE(Client *client, std::string arg);
+				void	_executeINVITE(Client *client, std::string arg);
 				Client	*_getClientByNick(std::string nick);
 
 				Server(const Server &src);

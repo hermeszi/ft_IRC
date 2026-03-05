@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/28 22:02:40 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/05 22:08:31 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1102,5 +1102,107 @@ void Server::_executeMODE(Client *client, std::string arg)
 				return ;
 			}
 		}
+	}
+}
+
+void	Server::_executeINVITE(Client *client, std::string arg)
+{
+	if (arg.empty())
+	{
+		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	size_t spacePos = arg.find(' ');
+	std::string nickStr= "";
+	std::string channelName = "";
+
+	if (spacePos == std::string::npos)
+	{
+		std::string err = ":irc_server 461 NICK :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	else
+	{
+		nickStr = arg.substr(0, spacePos);
+		while (!nickStr.empty() && nickStr[0] == ' ')
+		{
+			nickStr.erase(0, 1);
+		}
+		channelName = arg.substr(spacePos + 1);
+		while (!channelName.empty() && channelName[0] == ' ')
+		{
+			channelName.erase(0, 1);
+		}
+	}
+	if (channelName.empty())
+	{
+		std::string err = ":irc_server 461 NICK :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	if (channelName[0] != '#')
+	{
+		channelName = "#" + channelName;
+	}
+	if (nickStr.empty())
+	{
+		std::string err = ":irc_server 461 NICK :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	if (_channels.find(channelName) == _channels.end())
+	{
+		std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	Channel	*channel;
+	channel = _channels.at(channelName);
+	if (!channel->isMember(client))
+	{
+    	std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+    	return ;
+	}
+	if (!channel->isOperator(client))
+	{
+		std::string err = ":irc_server 482 " + client->getNickname() + " " + channelName + " :You're not channel operator\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
+	Client *targetClient = _getClientByNick(nickStr);
+	if (targetClient)
+	{
+		if (channel->isMember(targetClient))
+		{
+			std::string err = ":irc_server 443 " + client->getNickname() + " " + targetClient->getNickname() + " " + channelName + " :is already on channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return ;	
+		}
+		else if (channel->isInvited(targetClient))
+		{
+			std::string msg = ":irc_server 341 " + channelName + " " + client->getNickname() + "\r\n";
+			send(client->getFd(), msg.c_str(), msg.length(), 0);
+			msg = ":" + client->getPrefix() + " INVITE " + targetClient->getNickname() + " " + channelName + "\r\n";
+			send(targetClient->getFd(), msg.c_str(), msg.length(), 0);
+			return ;
+		}
+		else
+		{
+			channel->addInvite(targetClient);
+			std::string msg = ":irc_server 341 " + channelName + " " + client->getNickname() + "\r\n";
+			send(client->getFd(), msg.c_str(), msg.length(), 0);
+			msg = ":" + client->getPrefix() + " INVITE " + targetClient->getNickname() + " " + channelName + "\r\n";
+			send(targetClient->getFd(), msg.c_str(), msg.length(), 0);
+			return ;			
+		}
+	}
+	else
+	{
+		std::string err = ":irc_server 401 " + nickStr + " :No such nick/channel\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
 	}
 }
