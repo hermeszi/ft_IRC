@@ -552,29 +552,24 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 
 void Server::_executePART(Client *client, std::string arg)
 {
-	// TODO: Support multiple channels (comma-separated)
-    // For now: single channel only
-    // Future: parseChannelList(arg) returns vector<string>
 	if (arg.empty())
 	{
 		std::string err = ":irc_server 461 PART :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
 	size_t spacePos = arg.find(' ');
-	std::string channelName = "";
+	std::string channelsStr = "";
 	std::string reason = "";
-
 	if (spacePos == std::string::npos)
 	{
-    	channelName = arg;
-    	reason = "";
+		channelsStr = arg;
+		reason = "";
 	}
 	else
 	{
-    	channelName = arg.substr(0, spacePos);
-    	std::string rest = arg.substr(spacePos + 1);
+		channelsStr = arg.substr(0, spacePos);
+		std::string rest = arg.substr(spacePos + 1);
 		if (!rest.empty() && rest[0] == ':')
 		{
 			reason = rest.substr(1);
@@ -584,54 +579,53 @@ void Server::_executePART(Client *client, std::string arg)
 			reason = rest;
 		}
 	}
-	if (channelName.empty())
+	std::vector<std::string> channelsToLeave;
+	std::stringstream ss(channelsStr);
+	std::string chan;
+	while (std::getline(ss, chan, ','))
 	{
-		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
+		if (!chan.empty())
+			channelsToLeave.push_back(chan);
 	}
-	if (channelName[0] != '#')
-		channelName = "#" + channelName;
-	if (_channels.find(channelName) == _channels.end())
+	for (size_t x = 0; x < channelsToLeave.size(); ++x)
 	{
-		std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
-	}
-	else
-	{
-		Channel	*channel;
-		channel = _channels.at(channelName);
-
+		std::string channelName = channelsToLeave[x];
+		if (channelName[0] != '#')
+			channelName = "#" + channelName;
+		if (_channels.find(channelName) == _channels.end())
+		{
+			std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			continue ;
+		}
+		Channel	*channel = _channels.at(channelName);
 		if (!channel->isMember(client))
 		{
-    		std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
+			std::string err = ":irc_server 442 " + client->getNickname() + " " + channelName + " :You're not on that channel\r\n";
 			send(client->getFd(), err.c_str(), err.length(), 0);
-    		return;
+			continue ;
 		}
-
 		std::string partMsg = ":" + client->getPrefix() + " PART " + channelName + " :" + reason + "\r\n";
 		channel->broadcast(partMsg, NULL);
-
 		channel->removeMember(client);
 		if (channel->isEmpty())
 		{
 			delete channel;
 			_channels.erase(channelName);
-			return ;
 		}
 		else
 		{
 			if (!channel->hasOperators())
 			{
 				Client *newOp = channel->getFirstMember();
-				channel->addOperator(newOp);
-				//MODE #channel +o nickname
-				std::string modeMsg = ":irc_server MODE " + channelName + " +o " + newOp->getNickname() + "\r\n";
-    			channel->broadcast(modeMsg, NULL);
+				if (newOp)
+				{
+					channel->addOperator(newOp);
+					std::string modeMsg = ":irc_server MODE " + channelName + " +o " + newOp->getNickname() + "\r\n";
+					channel->broadcast(modeMsg, NULL);
+				}
 			}
 		}
-		return ;
 	}
 }
 
@@ -810,10 +804,10 @@ static bool needsParameter(char action, char flag)
 {
     if (flag == 'o')
         return true;
-    
+
     if (action == '+')
         return (flag == 'k' || flag == 'l');
-    
+
     return false;
 }
 
@@ -907,7 +901,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 		{
 			std::string err = ":irc_server 482 " + client->getNickname() + " " + channelName + " :You're not channel operator\r\n";
 			send(client->getFd(), err.c_str(), err.length(), 0);
-			return ;		
+			return ;
 		}
 		char action = '\0';
 		char flag = '\0';
@@ -932,7 +926,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 					if (needsParameter(action, modeFlag.at(i)))
 					{
 						flag = modeFlag.at(i);
-						//need parameter for +k and +o, +l 
+						//need parameter for +k and +o, +l
 						if (parameter.empty())
 						{
 							std::string err = ":irc_server 461 " + client->getNickname() + " MODE " + action + flag + " :Not enough parameters\r\n";
@@ -949,8 +943,8 @@ void Server::_executeMODE(Client *client, std::string arg)
 						{
 							currentParam = parameter.substr(0, pos);
 							parameter = parameter.substr(pos + 1);  // Update for next iteration
-						} 
-						else 
+						}
+						else
 						{
 							currentParam = parameter;  // Last parameter
 							parameter = "";
@@ -1025,7 +1019,7 @@ void Server::_executeMODE(Client *client, std::string arg)
     						}
 							channel->removeOperator(target);
 							std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -o " + target->getNickname() + "\r\n";
-    						channel->broadcast(modeMsg, NULL);	
+    						channel->broadcast(modeMsg, NULL);
 						}
 						else
 						{
@@ -1099,7 +1093,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 							return ;
 						}
 					}
-				}						
+				}
 			}
 			else
 			{
