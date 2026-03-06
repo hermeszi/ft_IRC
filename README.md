@@ -291,13 +291,7 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ## Testing
 
-
-* [ ] Basic connect/register
-* [ ] Multiple clients chat in a channel
-* [ ] Join/part/quit messages
-* [ ] Mode changes behave correctly
-* [ ] Stress test: many clients / rapid messages
-* [ ] Invalid input: malformed commands, missing params
+- see testing.md
 
 ---
 
@@ -319,11 +313,6 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 * `man 2 socket`, `man 2 bind`, `man 2 listen`, `man 2 accept`, `man 2 recv`, `man 2 send`
 * `man 2 poll` (or `man 2 select` if you use select)
 * Beej’s Guide to Network Programming
-
-### Useful IRC tooling
-
-* HexChat / irssi usage docs
-* netcat basics for line-based TCP testing
 
 ### How AI was used
 
