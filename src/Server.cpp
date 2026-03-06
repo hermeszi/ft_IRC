@@ -215,65 +215,65 @@ void	Server::closeClient(int fd)
 	}
 }
 
-void    Server::parseMessage(std::string message, int fd)
+void	Server::parseMessage(std::string message, int fd)
 {
-    if (message.empty())
-        return ;
-    if (message.length() > 0 && message[message.length() - 1] == '\n')
-        message.erase(message.length() - 1);
-    if (message.length() > 0 && message[message.length() - 1] == '\r')
-        message.erase(message.length() - 1);
-    if (message.empty())
-        return ;
-    std::stringstream ss(message);
-    std::string command;
-    ss >> command;
-    for (size_t x = 0; x < command.length(); x++)
-        command[x] = std::toupper(static_cast<unsigned char>(command[x]));
-    std::string    arg;
-    std::getline(ss, arg);
-    if (!arg.empty() && arg[0] == ' ')
-        arg.erase(0, 1);
-    Client    *client = _clients[fd];
-    if (!client)
-        return ;
-    if (command == "PASS")
-        _executePASS(client, arg);
-    else if (command == "NICK")
-        _executeNICK(client, arg);
-    else if (command == "USER")
-        _executeUSER(client, arg);
-    else if (command == "QUIT")
-        _executeQUIT(client, arg);
-    else if (command == "CAP")
-        return ;
-    else if (!client->isRegistered())
-    {
-        std::string err = ":irc_server 451 :You have not registered\r\n";
-        send(fd, err.c_str(), err.length(), 0);
-    }
-    else if (command == "PING")
-        _executePING(fd, arg);
-    else if (command == "PRIVMSG")
-        _executePRIVMSG(client, arg);
-    else if (command == "JOIN")
-        _executeJOIN(client, arg);
-    else if (command == "KICK")
-        _executeKICK(client, arg);
-    else if (command == "PART")
-        _executePART(client, arg);
-    else if (command == "TOPIC")
-        _executeTOPIC(client, arg);
-    else if (command == "MODE")
-        _executeMODE(client, arg);
-    else if (command == "INVITE")
-        _executeINVITE(client, arg);
-    else
-    {
-        std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
-        send(fd, err.c_str(), err.length(), 0);
-        std::cout << "Unknown Command: " << command << std::endl;
-    }
+	if (message.empty())
+		return ;
+	if (message.length() > 0 && message[message.length() - 1] == '\n')
+		message.erase(message.length() - 1);
+	if (message.length() > 0 && message[message.length() - 1] == '\r')
+		message.erase(message.length() - 1);
+	if (message.empty())
+		return ;
+	std::stringstream ss(message);
+	std::string command;
+	ss >> command;
+	for (size_t x = 0; x < command.length(); x++)
+		command[x] = std::toupper(static_cast<unsigned char>(command[x]));
+    std::string	arg;
+	std::getline(ss, arg);
+	while (!arg.empty() && arg[0] == ' ')
+		arg.erase(0, 1);
+	Client	*client = _clients[fd];
+	if (!client)
+		return ;
+	if (command == "PASS")
+		_executePASS(client, arg);
+	else if (command == "NICK")
+		_executeNICK(client, arg);
+	else if (command == "USER")
+		_executeUSER(client, arg);
+	else if (command == "QUIT")
+		_executeQUIT(client, arg);
+	else if (command == "CAP")
+		return ;
+	else if (!client->isRegistered())
+	{
+		std::string err = ":irc_server 451 :You have not registered\r\n";
+		send(fd, err.c_str(), err.length(), 0);
+	}
+	else if (command == "PING")
+		_executePING(fd, arg);
+	else if (command == "PRIVMSG")
+		_executePRIVMSG(client, arg);
+	else if (command == "JOIN")
+		_executeJOIN(client, arg);
+	else if (command == "KICK")
+		_executeKICK(client, arg);
+	else if (command == "PART")
+		_executePART(client, arg);
+	else if (command == "TOPIC")
+		_executeTOPIC(client, arg);
+	else if (command == "MODE")
+		_executeMODE(client, arg);
+	else if (command == "INVITE")
+		_executeINVITE(client, arg);
+	else
+	{
+		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
+		send(fd, err.c_str(), err.length(), 0);
+		std::cout << "Unknown Command: " << command << std::endl;
+	}
 }
 
 void	Server::_executePASS(Client *client, std::string arg)
@@ -441,6 +441,8 @@ void Server::_executePRIVMSG(Client *client, std::string arg)
 	std::string targ;
 	while (std::getline(ssTargets, targ, ','))
 	{
+		while (!targ.empty() && targ[0] == ' ')
+			targ.erase(0, 1);
 		if (!targ.empty())
 			targets.push_back(targ);
 	}
@@ -537,6 +539,8 @@ void Server::_executeJOIN(Client *client, std::string arg)
 	std::string chan;
 	while (std::getline(ssChan, chan, ','))
 	{
+		while (!chan.empty() && chan[0] == ' ')
+			chan.erase(0, 1);
 		if (!chan.empty())
 			channels.push_back(chan);
 	}
@@ -547,6 +551,8 @@ void Server::_executeJOIN(Client *client, std::string arg)
 	std::string key;
 	while (std::getline(ssKey, key, ','))
 	{
+		while (!key.empty() && key[0] == ' ')
+			key.erase(0, 1);
 		if (!key.empty())
 			keys.push_back(key);
 	}
@@ -674,6 +680,8 @@ void Server::_executePART(Client *client, std::string arg)
 	std::string chan;
 	while (std::getline(ss, chan, ','))
 	{
+		while (!chan.empty() && chan[0] == ' ')
+			chan.erase(0, 1);
 		if (!chan.empty())
 			channelsToLeave.push_back(chan);
 	}
@@ -755,6 +763,8 @@ void Server::_executeKICK(Client *client, std::string arg)
 	std::string chan;
 	while (std::getline(ssChan, chan, ','))
 	{
+		while (!chan.empty() && chan[0] == ' ')
+			chan.erase(0, 1);
 		if (!chan.empty())
 			channels.push_back(chan);
 	}
@@ -764,17 +774,20 @@ void Server::_executeKICK(Client *client, std::string arg)
 	std::string user;
 	while (std::getline(ssUser, user, ','))
 	{
+		while (!user.empty() && user[0] == ' ')
+			user.erase(0, 1);
 		if (!user.empty())
 			users.push_back(user);
 	}
 
-	for (size_t i = 0; i < users.size(); ++i)
+	size_t maxCount = (channels.size() > users.size()) ? channels.size() : users.size();
+	for (size_t x = 0; x < maxCount; ++x)
 	{
-		std::string channelName = (channels.size() == 1) ? channels[0] : (i < channels.size() ? channels[i] : "");
-		if (channelName.empty())
-			continue;
+		std::string channelName = (channels.size() == 1) ? channels[0] : (x < channels.size() ? channels[x] : "");
+		std::string targetUser = (users.size() == 1) ? users[0] : (x < users.size() ? users[x] : "");
 
-		std::string targetUser = users[i];
+		if (channelName.empty() || targetUser.empty())
+			continue;
 		if (channelName.empty())
 		{
 			std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
@@ -880,12 +893,6 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 		{
 			newTopic = rest;
 		}
-	}
-	if (channelName.empty())
-	{
-		std::string err = ":irc_server 461 TOPIC :Not enough parameters\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
 	}
 	if (channelName.empty())
 	{
