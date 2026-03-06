@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/06 15:01:37 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/06 20:22:03 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -180,6 +180,7 @@ void	Server::closeClient(int fd)
 		while (it != _channels.end())
 		{
 			Channel	*channel = it->second;
+			channel->removeInvite(client);
 			if (channel->isMember(client))
 			{
 				channel->removeMember(client);
@@ -294,6 +295,7 @@ void	Server::_executePASS(Client *client, std::string arg)
 		std::string err = ":irc_server 464 :Password incorrect\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		closeClient(client->getFd());
+		return ;
 	}
 	if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
 	{
@@ -678,7 +680,7 @@ void Server::_executePART(Client *client, std::string arg)
 	for (size_t x = 0; x < channelsToLeave.size(); ++x)
 	{
 		std::string channelName = channelsToLeave[x];
-		if (channelName[0] != '#')
+		if (!channelName.empty() && channelName[0] != '#')
 			channelName = "#" + channelName;
 		if (_channels.find(channelName) == _channels.end())
 		{
@@ -773,7 +775,12 @@ void Server::_executeKICK(Client *client, std::string arg)
 			continue;
 
 		std::string targetUser = users[i];
-
+		if (channelName.empty())
+		{
+			std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return ;
+		}
 		if (channelName[0] != '#')
 			channelName = "#" + channelName;
 
@@ -873,6 +880,12 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 		{
 			newTopic = rest;
 		}
+	}
+	if (channelName.empty())
+	{
+		std::string err = ":irc_server 461 TOPIC :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
 	}
 	if (channelName.empty())
 	{
@@ -1007,6 +1020,12 @@ void Server::_executeMODE(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
+	if (channelName.empty())
+	{
+		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
 	if (channelName[0] != '#')
 		channelName = "#" + channelName;
 	if (_channels.find(channelName) == _channels.end())
@@ -1041,8 +1060,12 @@ void Server::_executeMODE(Client *client, std::string arg)
 		}
 		char action = '\0';
 		char flag = '\0';
-		if (modeFlag.empty())
-			return ;
+		if (modeFlag.empty() || modeFlag.size() == 1)
+		{
+			std::string err = ":irc_server 461 " + client->getNickname() + " MODE :Not enough parameters\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return;
+		}
 		else
 		{
 			action = modeFlag.at(0);
@@ -1123,7 +1146,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 							{
 								if (!channel->setUserLimit(currentParam))
 								{
-									std::string err = ":irc_server 461 " + client->getNickname() + " MODE " + action + flag + " :Invalid mode parameter\r\n";
+									std::string err = ":irc_server 461 " + client->getNickname() + " MODE " + action + flag + " :Invalid limit\r\n";
 									send(client->getFd(), err.c_str(), err.length(), 0);
             						return;
 								}
@@ -1280,6 +1303,12 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 	}
 	if (!channelName.empty() && channelName[0] == ':')
 		channelName.erase(0, 1);
+	if (channelName.empty())
+	{
+		std::string err = ":irc_server 461 INVITE :Not enough parameters\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return ;
+	}
 	if (channelName[0] != '#')
 	{
 		channelName = "#" + channelName;
