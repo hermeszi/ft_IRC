@@ -504,7 +504,6 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		// Check Invite-Only (+i)
 		if (channel->isInviteOnly())
 		{
-			//TODO MINGDE: Uncomment this when you finish the isInvited function!
 			if (!channel->isInvited(client))
 			{
 				std::string err = ":irc_server 473 " + client->getNickname() + " " + name + " :Cannot join channel (+i)\r\n";
@@ -537,7 +536,7 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		return ;
 	channel->addMember(client);
 	channel->removeInvite(client); //for invited guest
-	
+
 	std::string joinMsg = ":" + client->getPrefix() + " JOIN :" + name + "\r\n";
 	channel->broadcast(joinMsg, client);
 	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
@@ -665,7 +664,7 @@ void	Server::_executeKICK(Client *client, std::string arg)
 		reason = reason.substr(1);
 	if (reason.empty())
 		reason = "Kicked from channel";
-		
+
 	if (!channelName.empty() && channelName[0] != '#')
 	{
 		channelName = "#" + channelName;
@@ -1119,7 +1118,7 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 {
 	if (arg.empty())
 	{
-		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
+		std::string err = ":irc_server 461 INVITE :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
@@ -1129,7 +1128,7 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 
 	if (spacePos == std::string::npos)
 	{
-		std::string err = ":irc_server 461 NICK :Not enough parameters\r\n";
+		std::string err = ":irc_server 461 INVITE :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
@@ -1148,7 +1147,7 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 	}
 	if (channelName.empty())
 	{
-		std::string err = ":irc_server 461 NICK :Not enough parameters\r\n";
+		std::string err = ":irc_server 461 INVITE :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
@@ -1158,7 +1157,7 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 	}
 	if (nickStr.empty())
 	{
-		std::string err = ":irc_server 461 NICK :Not enough parameters\r\n";
+		std::string err = ":irc_server 461 INVITE :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
@@ -1189,11 +1188,11 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 		{
 			std::string err = ":irc_server 443 " + client->getNickname() + " " + targetClient->getNickname() + " " + channelName + " :is already on channel\r\n";
 			send(client->getFd(), err.c_str(), err.length(), 0);
-			return ;	
+			return ;
 		}
 		else if (channel->isInvited(targetClient))
 		{
-			std::string msg = ":irc_server 341 " + channelName + " " + client->getNickname() + "\r\n";
+			std::string msg = ":irc_server 341 " + client->getNickname() + " " + targetClient->getNickname() + " " + channelName + "\r\n";
 			send(client->getFd(), msg.c_str(), msg.length(), 0);
 			msg = ":" + client->getPrefix() + " INVITE " + targetClient->getNickname() + " " + channelName + "\r\n";
 			send(targetClient->getFd(), msg.c_str(), msg.length(), 0);
@@ -1202,11 +1201,11 @@ void	Server::_executeINVITE(Client *client, std::string arg)
 		else
 		{
 			channel->addInvite(targetClient);
-			std::string msg = ":irc_server 341 " + channelName + " " + client->getNickname() + "\r\n";
+			std::string msg = ":irc_server 341 " + client->getNickname() + " " + targetClient->getNickname() + " " + channelName + "\r\n";
 			send(client->getFd(), msg.c_str(), msg.length(), 0);
 			msg = ":" + client->getPrefix() + " INVITE " + targetClient->getNickname() + " " + channelName + "\r\n";
 			send(targetClient->getFd(), msg.c_str(), msg.length(), 0);
-			return ;			
+			return ;
 		}
 	}
 	else
