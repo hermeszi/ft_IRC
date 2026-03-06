@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/05 21:03:53 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/06 15:07:51 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ _userLimit(-1)
 
 Channel::Channel(){}
 
-Channel::~Channel(){};
+Channel::~Channel(){}
 
 std::string Channel::getName() const
 {

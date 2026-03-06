@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/05 22:08:31 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/06 15:01:37 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -257,7 +257,9 @@ void	Server::parseMessage(std::string message, int fd)
 	else if (command == "TOPIC")
 		_executeTOPIC(client, arg);
 	else if (command == "MODE")
-       _executeMODE(client, arg);
+		_executeMODE(client, arg);
+	else if (command == "INVITE")
+		_executeINVITE(client, arg);
 	else
 	{
 		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
@@ -285,6 +287,12 @@ void	Server::_executePASS(Client *client, std::string arg)
 		std::string err = ":irc_server 464 :Password incorrect\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		closeClient(client->getFd());
+	}
+	if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
+	{
+		client->setRegistered(true);
+		std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+		send(client->getFd(), welcome.c_str(), welcome.length(), 0);
 	}
 }
 
@@ -496,13 +504,13 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		// Check Invite-Only (+i)
 		if (channel->isInviteOnly())
 		{
-			// TODO MINGDE: Uncomment this when you finish the isInvited function!
-			// if (!channel->isInvited(client))
-			// {
-			// 	std::string err = ":irc_server 473 " + client->getNickname() + " " + name + " :Cannot join channel (+i)\r\n";
-			// 	send(client->getFd(), err.c_str(), err.length(), 0);
-			// 	return ;
-			// }
+			//TODO MINGDE: Uncomment this when you finish the isInvited function!
+			if (!channel->isInvited(client))
+			{
+				std::string err = ":irc_server 473 " + client->getNickname() + " " + name + " :Cannot join channel (+i)\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return ;
+			}
 		}
 		// Check Password (+k)
 		if (!channel->getPassword().empty())
@@ -528,6 +536,8 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 	if (channel->isMember(client))
 		return ;
 	channel->addMember(client);
+	channel->removeInvite(client); //for invited guest
+	
 	std::string joinMsg = ":" + client->getPrefix() + " JOIN :" + name + "\r\n";
 	channel->broadcast(joinMsg, client);
 	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
@@ -655,16 +665,16 @@ void	Server::_executeKICK(Client *client, std::string arg)
 		reason = reason.substr(1);
 	if (reason.empty())
 		reason = "Kicked from channel";
+		
+	if (!channelName.empty() && channelName[0] != '#')
+	{
+		channelName = "#" + channelName;
+	}
 	if (_channels.find(channelName) == _channels.end())
 	{
 		std::string err = ":irc_server 403 " + client->getNickname() + " " + channelName + " :No such channel\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
-	}
-	//needed to add #?
-	if (!channelName.empty() && channelName[0] != '#')
-	{
-    	channelName = "#" + channelName;
 	}
 	Channel *channel = _channels[channelName];
 	if (!channel->isMember(client))
