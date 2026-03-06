@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/06 20:22:03 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/06 21:30:11 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -297,7 +297,7 @@ void	Server::_executePASS(Client *client, std::string arg)
 		closeClient(client->getFd());
 		return ;
 	}
-	if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
+	if (client->hasPassword() && !client->getUsername().empty() && !client->getNickname().empty() && !client->isRegistered())
 	{
 		client->setRegistered(true);
 		std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";

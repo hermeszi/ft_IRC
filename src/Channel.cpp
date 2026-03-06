@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/06 15:07:51 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/06 21:55:21 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -170,15 +170,19 @@ bool Channel::setUserLimit(int num)
 bool Channel::setUserLimit(std::string strNum)
 {
 	std::stringstream ss(strNum);
+	//std::cout << "strNum:" << strNum << std::endl;
 	int num;
-	ss >> num;
 	ss >> std::ws;
+	ss >> num;
+	//std::cout << "Num:" << num << std::endl;
 	if (!ss.eof())
 	{
+		//std::cout << "eof\n"; 
 		return false;
 	}
 	if (ss.fail())
 	{
+		//std::cout << "fail\n"; 
 		return false;
 	}
 	if (num > 0)
@@ -186,6 +190,7 @@ bool Channel::setUserLimit(std::string strNum)
 		_userLimit = num;
 		return true;
 	}
+	//std::cout << "end\n"; 
 	return false;
 }
 
