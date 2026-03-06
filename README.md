@@ -13,48 +13,25 @@
 ## Features
 
 **Core IRC Server**
-- Multi-client support with non-blocking I/O
-- User authentication and registration
+- Multi-client support with non-blocking I/O via `poll()`
+- User authentication and registration (PASS → NICK → USER flow)
 - Channel creation and management
 - Private and channel messaging
 - Operator privileges and channel controls
 
 **Implemented Commands**
 - Authentication: `PASS`, `NICK`, `USER`
-- Channels: `JOIN`, `QUIT`
+- Channels: `JOIN`, `PART`, `QUIT`
 - Messaging: `PRIVMSG`, `PING`/`PONG`
 
-**Channel Operator Commands** *(in progress)*
-- `PART` - Leave channel
+**Channel Operator Commands**
 - `KICK` - Remove user from channel
-- `INVITE` - Invite user to channel
-- `TOPIC` - View/change channel topic
-- `MODE` - Channel modes (i, t, k, o, l)
+- `INVITE` - Invite user to channel (respects `+i` mode)
+- `TOPIC` - View/change channel topic (respects `+t` mode)
+- `MODE` - Channel modes: `i` (invite-only), `t` (topic lock), `k` (password), `o` (operator), `l` (user limit)
 
 ---
 
-## File Structure
-
-```
-.
-├── Makefile
-├── inc/
-│   ├── Server.hpp
-│   ├── Client.hpp
-│   ├── Channel.hpp
-│   └── ...
-├── src/
-│   ├── main.cpp
-│   ├── Server.cpp
-│   ├── Client.cpp
-│   ├── Channel.cpp
-│   ├── commands/
-│   │   ├── Pass.cpp
-│   │   ├── Nick.cpp
-│   │   └── ...
-│   └── ...
-└── README.md
-```
 ### Class Structure
 ```
 Server
@@ -78,7 +55,13 @@ Client
 Channel
 ├── _name (string)                      // Channel name (starts with #)
 ├── _members (vector<Client*>)          // All users in channel
-└── _operators (vector<Client*>)        // Subset with operator privileges
+├── _operators (vector<Client*>)        // Subset with operator privileges
+├── _topic (string)                     // Channel topic (TOPIC command)
+├── _password (string)                  // Channel key (MODE +k)
+├── _inviteOnly (bool)                  // Invite-only flag (MODE +i)
+├── _topicRestricted (bool)             // Topic restricted to ops (MODE +t)
+├── _userLimit (int)                    // Max users, -1 = no limit (MODE +l)
+└── _inviteList (vector<Client*>)       // Clients invited via INVITE command
 ```
 
 ### Data Flow
@@ -164,19 +147,20 @@ PRIVMSG #test :hello
 
 ## Supported Commands
 
-| Command | Status | Notes                      |
-| ------- | -----: | -------------------------- |
-| PASS    |      ✅ | Required for registration? |
-| NICK    |      ✅ | Nick collision handling    |
-| USER    |      ✅ | Registration flow          |
-| JOIN    |      🟨 | Channel creation rules     |
-| PART    |      🟨 |                            |
-| PRIVMSG |      ✅ | Private + channel messages |
-| KICK    |      🟨 |                            |
-| INVITE  |      ⬜ |                            |
-| TOPIC   |      ✅ |                            |
-| MODE    |      ✅ | Which modes implemented    |
-| QUIT    |      ✅ | Cleanup / broadcast quit   |
+| Command | Status | Notes                                         |
+| ------- | :----: | --------------------------------------------- |
+| PASS    |   ✅   | Required before registration                  |
+| NICK    |   ✅   | Nick collision handling, basic validation     |
+| USER    |   ✅   | Registration flow                             |
+| JOIN    |   ✅   | Enforces +i, +k, +l mode restrictions         |
+| PART    |   ✅   | Multi-channel, optional reason                |
+| PRIVMSG |   ✅   | Private messages and channel messages         |
+| KICK    |   ✅   | Operator only, broadcasts to channel          |
+| INVITE  |   ✅   | Operator only, adds to invite list            |
+| TOPIC   |   ✅   | View and set; respects +t restriction         |
+| MODE    |   ✅   | Supports i, t, k, o, l; multi-flag stacking   |
+| PING    |   ✅   | PONG reply                                    |
+| QUIT    |   ✅   | Cleanup and broadcast to all joined channels  |
 
 Legend: ⬜ not done, 🟨 partial, ✅ done
 
@@ -184,38 +168,38 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ## Technical Notes
 
-### 👶 Basic Socket event loop
+### Basic Socket event loop
 
-##### - Server init -
-1. __socket()__  → Create socket fd
-2. setsockopt() // set port to be released after exit (faster testing)
-3. fcntl() // Non-blocking
-4. __bind()__    → Attach to port
-5. __listen()__  → Mark as passive (accepting connections)
-6. signal() // Signal handlers
-7. //Add to poll array
+##### Server init
+1. `socket()` → Create socket fd
+2. `setsockopt()` → Set port to release after exit (faster testing)
+3. `fcntl()` → Set non-blocking
+4. `bind()` → Attach to port
+5. `listen()` → Mark as passive (accepting connections)
+6. `signal()` → Signal handlers (SIGINT, SIGQUIT, SIGPIPE)
+7. Add server fd to poll array
 
-##### - Server run -
-1. poll()  Wait for events on any file descriptor in the list.
-2. Check revents & POLLIN → Identify which FD has data ready to read.
-3. If FD is _server_fd (New Connection):
+##### Server run
+1. `poll()` → Wait for events on any file descriptor
+2. Check `revents & POLLIN` → Identify which fd has data ready
+3. If fd is `_server_fd` (New Connection):
 ```
-    accept() → Create a new connection FD for the client.
-    fcntl() → Set the new client FD to O_NONBLOCK.
-    New Client Object → Store client data (IP, FD) in _clients map.
-    Update pollfds → Add the new FD to the poll array to watch for messages.
+    accept()     → Create a new connection fd for the client
+    fcntl()      → Set new client fd to O_NONBLOCK
+    new Client() → Store client data (IP, fd) in _clients map
+    push pollfd  → Add new fd to poll array
 ```
-
-4. If FD is a Client FD (Existing Connection):
+4. If fd is a client fd (Existing Connection):
 ```
-    recv() → Read incoming bytes into a temporary buffer.
-    Check for Disconnect → If recv returns ≤0, run closeClient() and remove from the poll array.
-    appendBuffer() → Add raw data to the specific Client object's buffer.
-    hasLine() / extractLine() → Loop through the buffer to find complete messages (ending in \n).
-    parseMessage() → Process each extracted command (e.g., NICK, JOIN, PRIVMSG).
-    Check for Removal → If the command (like QUIT) closed the connection, remove the FD from the poll array immediately.
+    recv()          → Read incoming bytes into temporary buffer
+    if recv <= 0    → closeClient(), remove from poll array
+    appendBuffer()  → Append raw data to Client's internal buffer
+    hasLine()       → Check if buffer contains '\n'
+    extractLine()   → Extract complete message, remove from buffer
+    parseMessage()  → Strip \r\n, extract command, route to handler
+    check removal   → If command closed the client (QUIT), remove fd from poll array
 ```
-#### Message Parsing
+### Message Parsing
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. Network Data Arrives                                     │
@@ -274,106 +258,37 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
                             │    etc.                         │
                             └─────────────────────────────────┘
 ```
-#### Client Authentication Flow (PASS, NICK, USER)
+
+### Client Authentication Flow (PASS, NICK, USER)
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Client Connects to Server                                   │
-│ Initial State:                                              │
-│   - hasPassword: false                                      │
-│   - nickname: ""                                            │
-│   - username: ""                                            │
-│   - isRegistered: false                                     │
+│ Client Connects                                             │
+│   hasPassword: false  nickname: ""  username: ""           │
+│   isRegistered: false                                       │
 └─────────────────────────────────────────────────────────────┘
                             ↓
-        ┌───────────────────────────────────────┐
-        │ Commands can arrive in ANY order      │
-        └───────────────────────────────────────┘
+              Commands can arrive in any order
                             ↓
-        ┌─────────────┬─────────────┬─────────────┐
-        │             │             │             │
-        ↓             ↓             ↓             
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│ PASS        │ │ NICK        │ │ USER        │
-│ <password>  │ │ <nickname>  │ │ <username>  │
-└─────────────┘ └─────────────┘ └─────────────┘
-        │             │             │
-        ↓             ↓             ↓
-┌─────────────────────────────────────────────────────────────┐
-│ PASS Validation                                             │
-├─────────────────────────────────────────────────────────────┤
-│ if (isRegistered())                                         │
-│   → ERR 462: Already registered                             │
-│                                                             │
-│ else if (arg == server_password)                            │
-│   → hasPassword = true                                      │
-│                                                             │
-│ else                                                        │
-│   → ERR 464: Password incorrect                             │
-│   → closeClient() - disconnect immediately                  │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ NICK Validation                                             │
-├─────────────────────────────────────────────────────────────┤
-│ if (arg.empty())                                            │
-│   → ERR 431: No nickname given                              │
-│                                                             │
-│ else if (nickname already in use by another client)         │
-│   → ERR 433: Nickname already in use                        │
-│                                                             │
-│ else                                                        │
-│   → nickname = arg                                          │
-│   → Check registration completion ─────┐                    │
-└────────────────────────────────────────│────────────────────┘
-                                         │
-┌────────────────────────────────────────│────────────────────┐
-│ USER Validation                        │                    │
-├────────────────────────────────────────│────────────────────┤
-│ if (isRegistered())                    │                    │
-│   → ERR 462: Already registered        │                    │
-│                                        │                    │
-│ else                                   │                    │
-│   → username = arg                     │                    │
-│   → Check registration completion ─────┤                    │
-└────────────────────────────────────────│────────────────────┘
-                                         │
-                                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│ Registration Completion Check                               │
-│ (Triggered after NICK or USER command)                      │
-├─────────────────────────────────────────────────────────────┤
-│ if (hasPassword == true &&                                  │
-│     username != "" &&                                       │
-│     nickname != "" &&                                       │
-│     isRegistered == false)                                  │
-│ {                                                           │
-│     isRegistered = true;                                    │
-│     send("001 :Welcome to IRC Network");                    │
-│ }                                                           │
-└─────────────────────────────────────────────────────────────┘
+       PASS              NICK                USER
+        ↓                 ↓                   ↓
+  Validate pw       Validate nick        Set username
+  setHasPassword    setNickname          setRealname
                             ↓
-┌─────────────────────────────────────────────────────────────┐
-│ Client is now REGISTERED and can use IRC commands          │
-│   - Can JOIN channels                                       │
-│   - Can send PRIVMSG                                        │
-│   - Can use all other commands                              │
-└─────────────────────────────────────────────────────────────┘
+         if (hasPassword && nickname != "" && username != "")
+                            ↓
+                  isRegistered = true
+                  send RPL 001 Welcome
+```
 
+### State Model
 
-### Event loop
-
-* `poll()`/`select()` strategy
-* How you detect disconnects and errors
-* How you avoid blocking writes (etc)
-
-### State model
-
-* Data structures for clients/channels
-* Ownership rules (who frees what)
-* Where you enforce permissions (ops, invite-only, topic lock, etc.)
-
+- `_clients` map owns all `Client*` objects — freed in `closeClient()` and `~Server()`
+- `_channels` map owns all `Channel*` objects — freed when empty or in `~Server()`
+- When a client disconnects, they are removed from all channel member/operator/invite lists before deletion
+- If a channel loses all operators, the first remaining member is promoted automatically
+- Invite list (`_inviteList`) is per-channel; entries are cleared when the invited client successfully joins
 ---
-```
+
 ## Testing
 
 
@@ -412,18 +327,13 @@ Legend: ⬜ not done, 🟨 partial, ✅ done
 
 ### How AI was used
 
-* Used ChatGPT to generate an initial README template and checklist sections.
-* Documentation: Generating input for this README.md and verifying RFC command syntax.
-* Used AI to brainstorm edge cases for message framing (`\r\n`) and multi-client behavior.
-* Used AI to help reword documentation and comment blocks.
-* Debugging: Troubleshooting specific edge cases in string parsing (e.g., handling \r\n vs \n).
+AI (Claude by Anthropic, ChatGPT ...etc) was used as a guided learning tool throughout this project.
 
-
-
-**AI was NOT used for:**
-
-* Implementing protocol handlers
-* Socket management implementation
+* **INVITE command** — discussed design of invite list lifecycle (when to add, when to clear), error codes (341, 443, 473), and correct IRC message format for inviter vs target
+* **MODE multi-flag parsing** — debugged the `needsParameter()` helper logic and parameter consumption loop for stacked flags like `+ikl`
+* **JOIN mode enforcement** — verified correct placement of `+i`/`+k`/`+l` checks and `removeInvite()` call after successful join
+* **Channel.cpp invite methods** — worked through `isInvited()`, `addInvite()`, `removeInvite()` design (const_iterator, pointer comparison, erase safety)
+* **README** — generated and updated this document.
 
 ---
 

@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/02/02 20:00:44 by jngew             #+#    #+#             */
-/*   Updated: 2026/02/28 21:40:40 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/06 15:07:51 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ _userLimit(-1)
 
 Channel::Channel(){}
 
-Channel::~Channel(){};
+Channel::~Channel(){}
 
 std::string Channel::getName() const
 {
@@ -215,4 +215,33 @@ std::string Channel::getModeString() const
     }
 
     return flags + params;
+}
+
+bool Channel::isInvited(Client *client) const
+{
+	std::vector<Client *>::const_iterator it = _inviteList.begin();
+	for (;it != _inviteList.end(); ++it)
+	{
+		if (*it == client)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+void Channel::addInvite(Client *client)
+{
+	if (isInvited(client))
+	{
+		return ;
+	}
+	_inviteList.push_back(client);
+}
+void Channel::removeInvite(Client *client)
+{
+	if (isInvited(client))
+	{
+		_inviteList.erase(std::find(_inviteList.begin(), _inviteList.end(), client));
+	}
 }
