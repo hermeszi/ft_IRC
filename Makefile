@@ -1,6 +1,6 @@
 NAME = ircserv
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -MMD -Iinc -g -MMD -MP -pedantic
+CXXFLAGS = -Wall -Wextra -Werror -MMD -Iinc -g -MP -pedantic
 CXXFLAGS += -std=c++98
 SRC = src/Channel.cpp src/Client.cpp src/main.cpp src/Server.cpp
 OBJ = $(SRC:%.cpp=%.o)
