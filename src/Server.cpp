@@ -141,7 +141,12 @@ void	Server::run()
 					int	bytes_received = recv(_pollfds[x].fd, buffer, sizeof(buffer) - 1, 0);
 					if (bytes_received <= 0)
 					{
-						closeClient(_pollfds[x].fd);
+						int	client_fd = _pollfds[x].fd;
+						Client *client = _clients[client_fd];
+						if (client)
+							_executeQUIT(client, "Client disconnected abruptly");
+						else
+							closeClient(client_fd);
 						_pollfds.erase(_pollfds.begin() + x);
 						x--;
 					}
@@ -788,12 +793,6 @@ void Server::_executeKICK(Client *client, std::string arg)
 
 		if (channelName.empty() || targetUser.empty())
 			continue;
-		if (channelName.empty())
-		{
-			std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
-			send(client->getFd(), err.c_str(), err.length(), 0);
-			return ;
-		}
 		if (channelName[0] != '#')
 			channelName = "#" + channelName;
 
@@ -1020,12 +1019,6 @@ void Server::_executeMODE(Client *client, std::string arg)
 				parameter.erase(0, 1);
 			}
 		}
-	}
-	if (channelName.empty())
-	{
-		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
 	}
 	if (channelName.empty())
 	{
