@@ -214,58 +214,65 @@ void	Server::closeClient(int fd)
 	}
 }
 
-void	Server::parseMessage(std::string message, int fd)
+void    Server::parseMessage(std::string message, int fd)
 {
-	if (message.empty())
-		return ;
-	if (message.length() > 0 && message[message.length() - 1] == '\n')
-		message.erase(message.length() - 1);
-	if (message.length() > 0 && message[message.length() - 1] == '\r')
-		message.erase(message.length() - 1);
-	if (message.empty())
-		return ;
-	std::stringstream ss(message);
-	std::string command;
-	ss >> command;
-	for (size_t x = 0; x < command.length(); x++)
-		command[x] = std::toupper(static_cast<unsigned char>(command[x]));
-	std::string	arg;
-	std::getline(ss, arg);
-	if (!arg.empty() && arg[0] == ' ')
-		arg.erase(0, 1);
-	Client	*client = _clients[fd];
-	if (!client)
-		return ;
-	if (command == "PASS")
-		_executePASS(client, arg);
-	else if (command == "NICK")
-		_executeNICK(client, arg);
-	else if (command == "USER")
-		_executeUSER(client, arg);
-	else if (command == "PING")
-		_executePING(fd, arg);
-	else if (command == "PRIVMSG")
-		_executePRIVMSG(client, arg);
-	else if (command == "QUIT")
-		_executeQUIT(client, arg);
-	else if (command == "JOIN")
-		_executeJOIN(client, arg);
-	else if (command == "KICK")
-		_executeKICK(client, arg);
-	else if (command == "PART")
-		_executePART(client, arg);
-	else if (command == "TOPIC")
-		_executeTOPIC(client, arg);
-	else if (command == "MODE")
-		_executeMODE(client, arg);
-	else if (command == "INVITE")
-		_executeINVITE(client, arg);
-	else
-	{
-		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
-		send(fd, err.c_str(), err.length(), 0);
-		std::cout << "Unknown Command: " << command << std::endl;
-	}
+    if (message.empty())
+        return ;
+    if (message.length() > 0 && message[message.length() - 1] == '\n')
+        message.erase(message.length() - 1);
+    if (message.length() > 0 && message[message.length() - 1] == '\r')
+        message.erase(message.length() - 1);
+    if (message.empty())
+        return ;
+    std::stringstream ss(message);
+    std::string command;
+    ss >> command;
+    for (size_t x = 0; x < command.length(); x++)
+        command[x] = std::toupper(static_cast<unsigned char>(command[x]));
+    std::string    arg;
+    std::getline(ss, arg);
+    if (!arg.empty() && arg[0] == ' ')
+        arg.erase(0, 1);
+    Client    *client = _clients[fd];
+    if (!client)
+        return ;
+    if (command == "PASS")
+        _executePASS(client, arg);
+    else if (command == "NICK")
+        _executeNICK(client, arg);
+    else if (command == "USER")
+        _executeUSER(client, arg);
+    else if (command == "QUIT")
+        _executeQUIT(client, arg);
+    else if (command == "CAP")
+        return ;
+    else if (!client->isRegistered())
+    {
+        std::string err = ":irc_server 451 :You have not registered\r\n";
+        send(fd, err.c_str(), err.length(), 0);
+    }
+    else if (command == "PING")
+        _executePING(fd, arg);
+    else if (command == "PRIVMSG")
+        _executePRIVMSG(client, arg);
+    else if (command == "JOIN")
+        _executeJOIN(client, arg);
+    else if (command == "KICK")
+        _executeKICK(client, arg);
+    else if (command == "PART")
+        _executePART(client, arg);
+    else if (command == "TOPIC")
+        _executeTOPIC(client, arg);
+    else if (command == "MODE")
+        _executeMODE(client, arg);
+    else if (command == "INVITE")
+        _executeINVITE(client, arg);
+    else
+    {
+        std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
+        send(fd, err.c_str(), err.length(), 0);
+        std::cout << "Unknown Command: " << command << std::endl;
+    }
 }
 
 void	Server::_executePASS(Client *client, std::string arg)
@@ -321,12 +328,26 @@ void	Server::_executeNICK(Client *client, std::string arg)
 			return ;
 		}
 	}
+	std::string oldPrefix = client->getPrefix();
+	bool wasRegistered = client->isRegistered();
 	client->setNickname(arg);
-	if (client->hasPassword() && !client->getUsername().empty() && !client->isRegistered())
+	if (client->hasPassword() && !client->getUsername().empty() && !wasRegistered)
 	{
 		client->setRegistered(true);
 		std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
 		send(client->getFd(), welcome.c_str(), welcome.length(), 0);
+	}
+	else if (wasRegistered)
+	{
+		std::string nickMsg = ":" + oldPrefix + " NICK :" + arg + "\r\n";
+		send(client->getFd(), nickMsg.c_str(), nickMsg.length(), 0);
+		std::map<std::string, Channel *>::iterator it = _channels.begin();
+		while (it != _channels.end())
+		{
+			if (it->second->isMember(client))
+				it->second->broadcast(nickMsg, client);
+			++it;
+		}
 	}
 }
 
@@ -383,7 +404,7 @@ Client	*Server::_getClientByNick(std::string nick)
 	return (NULL);
 }
 
-void	Server::_executePRIVMSG(Client *client, std::string arg)
+void Server::_executePRIVMSG(Client *client, std::string arg)
 {
 	if (arg.empty())
 	{
@@ -398,48 +419,68 @@ void	Server::_executePRIVMSG(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	std::string target = arg.substr(0, spacePos);
+
+	std::string targetsStr = arg.substr(0, spacePos);
 	std::string message = arg.substr(spacePos + 1);
+
 	if (!message.empty() && message[0] == ':')
 		message = message.substr(1);
-	if (target.empty() || message.empty())
+
+	if (targetsStr.empty() || message.empty())
 	{
 		std::string err = ":irc_server 412 :No text to send or invalid target\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	if (target[0] == '#')
+
+	// Cut the targets apart by commas
+	std::vector<std::string> targets;
+	std::stringstream ssTargets(targetsStr);
+	std::string targ;
+	while (std::getline(ssTargets, targ, ','))
 	{
-		if (_channels.find(target) != _channels.end())
-		{
-			Channel *channel = _channels[target];
-			if (!channel->isMember(client))
-			{
-				std::string err = ":irc_server 404 " + target + " :Cannot send to channel\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return ;
-			}
-			std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
-			channel->broadcast(fullMsg, client);
-		}
-		else
-		{
-			std::string err = ":irc_server 401 " + target + " :No such nick/channel\r\n";
-			send(client->getFd(), err.c_str(), err.length(), 0);
-		}
+		if (!targ.empty())
+			targets.push_back(targ);
 	}
-	else
+
+	// Go through the list of targets one by one using x
+	for (size_t x = 0; x < targets.size(); ++x)
 	{
-		Client *targetClient = _getClientByNick(target);
-		if (targetClient)
+		std::string target = targets[x];
+
+		if (target[0] == '#')
 		{
-			std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
-			send(targetClient->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+			if (_channels.find(target) != _channels.end())
+			{
+				Channel *channel = _channels[target];
+				if (!channel->isMember(client))
+				{
+					std::string err = ":irc_server 404 " + target + " :Cannot send to channel\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					continue ;
+				}
+				std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+				channel->broadcast(fullMsg, client);
+			}
+			else
+			{
+				std::string err = ":irc_server 401 " + target + " :No such nick/channel\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+			}
 		}
 		else
 		{
-			std::string err = ":irc_server 401 " + target + " :No such nick/channel\r\n";
-			send(client->getFd(), err.c_str(), err.length(), 0);
+			Client *targetClient = _getClientByNick(target);
+			if (targetClient)
+			{
+				std::string fullMsg = ":" + client->getPrefix() + " PRIVMSG " + target + " :" + message + "\r\n";
+				send(targetClient->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+			}
+			else
+			{
+				std::string err = ":irc_server 401 " + target + " :No such nick/channel\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+			}
 		}
 	}
 }
@@ -467,7 +508,7 @@ void	Server::_executeQUIT(Client *client, std::string arg)
 	closeClient(client->getFd());
 }
 
-void	Server::_executeJOIN(Client *client, std::string arg)
+void Server::_executeJOIN(Client *client, std::string arg)
 {
 	if (arg.empty())
 	{
@@ -475,90 +516,126 @@ void	Server::_executeJOIN(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	size_t	spacePos = arg.find(' ');
-	std::string name = "";
-	std::string	password = "";
+
+	size_t spacePos = arg.find(' ');
+	std::string channelsStr = "";
+	std::string keysStr = "";
+
 	if (spacePos == std::string::npos)
-		name = arg;
+		channelsStr = arg;
 	else
 	{
-		name = arg.substr(0, spacePos);
-		password = arg.substr(spacePos + 1);
-	}
-	if (!name.empty() && name[0] == ':')
-		name.erase(0, 1);
-	if (name[0] != '#')
-		name = "#" + name;
-	Channel	*channel;
-	bool	isNew = false;
-	if (_channels.find(name) == _channels.end())
-	{
-		channel = new Channel(name);
-		_channels[name] = channel;
-		channel->addOperator(client);
-		isNew = true;
-		std::cout << "Created channel: " << name << std::endl;
-	}
-	else
-	{
-		channel = _channels[name];
-		// --- NEW MODE CHECKS ---
-		// Check Invite-Only (+i)
-		if (channel->isInviteOnly())
-		{
-			if (!channel->isInvited(client))
-			{
-				std::string err = ":irc_server 473 " + client->getNickname() + " " + name + " :Cannot join channel (+i)\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return ;
-			}
-		}
-		// Check Password (+k)
-		if (!channel->getPassword().empty())
-		{
-			if (password != channel->getPassword())
-			{
-				std::string err = ":irc_server 475 " + client->getNickname() + " " + name + " :Cannot join channel (+k)\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return ;
-			}
-		}
-		// Check User Limit (+l)
-		if (channel->getUserLimit() > 0)
-		{
-			if (static_cast<int>(channel->getMemberCount()) >= channel->getUserLimit())
-			{
-				std::string err = ":irc_server 471 " + client->getNickname() + " " + name + " :Cannot join channel (+l)\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return ;
-			}
-		}
-	}
-	if (channel->isMember(client))
-		return ;
-	channel->addMember(client);
-	channel->removeInvite(client); //for invited guest
-
-	std::string joinMsg = ":" + client->getPrefix() + " JOIN :" + name + "\r\n";
-	channel->broadcast(joinMsg, client);
-	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
-
-	if (!channel->getTopic().empty())
-	{
-		std::string rpl332 = ":irc_server 332 " + client->getNickname() + " " + name + " :" + channel->getTopic() + "\r\n";
-		send(client->getFd(), rpl332.c_str(), rpl332.length(), 0);
+		channelsStr = arg.substr(0, spacePos);
+		keysStr = arg.substr(spacePos + 1);
 	}
 
-	std::string names = channel->getUserList();
-	std::string rpl353 = ":irc_server 353 " + client->getNickname() + " = " + name + " :" + names + "\r\n";
-	send(client->getFd(), rpl353.c_str(), rpl353.length(), 0);
-	std::string rpl366 = ":irc_server 366 " + client->getNickname() + " " + name + " :End of /NAMES list.\r\n";
-	send(client->getFd(), rpl366.c_str(), rpl366.length(), 0);
-	std::cout << client->getNickname() << " joined " << name << std::endl;
-	if (isNew)
-		std::cout << "Created new channel: " << name << std::endl;
-	else
-		std::cout << client->getNickname() << " joined existing channel: " << name << std::endl;
+	// Cut the channels apart by commas
+	std::vector<std::string> channels;
+	std::stringstream ssChan(channelsStr);
+	std::string chan;
+	while (std::getline(ssChan, chan, ','))
+	{
+		if (!chan.empty())
+			channels.push_back(chan);
+	}
+
+	// Cut the passwords apart by commas
+	std::vector<std::string> keys;
+	std::stringstream ssKey(keysStr);
+	std::string key;
+	while (std::getline(ssKey, key, ','))
+	{
+		if (!key.empty())
+			keys.push_back(key);
+	}
+
+	// Go through the list of channels one by one using x
+	for (size_t x = 0; x < channels.size(); ++x)
+	{
+		std::string name = channels[x];
+		// Match the password to the channel, if one exists
+		std::string password = (x < keys.size()) ? keys[x] : "";
+
+		if (!name.empty() && name[0] == ':')
+			name.erase(0, 1);
+		if (name.empty())
+			continue;
+		if (name[0] != '#')
+			name = "#" + name;
+
+		Channel *channel;
+		bool isNew = false;
+		if (_channels.find(name) == _channels.end())
+		{
+			channel = new Channel(name);
+			_channels[name] = channel;
+			channel->addOperator(client);
+			isNew = true;
+			std::cout << "Created channel: " << name << std::endl;
+		}
+		else
+		{
+			channel = _channels[name];
+
+			if (channel->isInviteOnly())
+			{
+				if (!channel->isInvited(client))
+				{
+					std::string err = ":irc_server 473 " + client->getNickname() + " " + name + " :Cannot join channel (+i)\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					continue ;
+				}
+			}
+
+			if (!channel->getPassword().empty())
+			{
+				if (password != channel->getPassword())
+				{
+					std::string err = ":irc_server 475 " + client->getNickname() + " " + name + " :Cannot join channel (+k)\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					continue ;
+				}
+			}
+
+			if (channel->getUserLimit() > 0)
+			{
+				if (static_cast<int>(channel->getMemberCount()) >= channel->getUserLimit())
+				{
+					std::string err = ":irc_server 471 " + client->getNickname() + " " + name + " :Cannot join channel (+l)\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					continue ;
+				}
+			}
+		}
+
+		if (channel->isMember(client))
+			continue ;
+
+		channel->addMember(client);
+		channel->removeInvite(client);
+
+		std::string joinMsg = ":" + client->getPrefix() + " JOIN :" + name + "\r\n";
+		channel->broadcast(joinMsg, client);
+		send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+
+		if (!channel->getTopic().empty())
+		{
+			std::string rpl332 = ":irc_server 332 " + client->getNickname() + " " + name + " :" + channel->getTopic() + "\r\n";
+			send(client->getFd(), rpl332.c_str(), rpl332.length(), 0);
+		}
+
+		std::string names = channel->getUserList();
+		std::string rpl353 = ":irc_server 353 " + client->getNickname() + " = " + name + " :" + names + "\r\n";
+		send(client->getFd(), rpl353.c_str(), rpl353.length(), 0);
+		std::string rpl366 = ":irc_server 366 " + client->getNickname() + " " + name + " :End of /NAMES list.\r\n";
+		send(client->getFd(), rpl366.c_str(), rpl366.length(), 0);
+
+		std::cout << client->getNickname() << " joined " << name << std::endl;
+		if (isNew)
+			std::cout << "Created new channel: " << name << std::endl;
+		else
+			std::cout << client->getNickname() << " joined existing channel: " << name << std::endl;
+	}
 }
 
 void Server::_executePART(Client *client, std::string arg)
