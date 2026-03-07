@@ -358,41 +358,37 @@ void	Server::_executeNICK(Client *client, std::string arg)
 	}
 }
 
-void	Server::_executeUSER(Client *client, std::string arg)
+void    Server::_executeUSER(Client *client, std::string arg)
 {
-	if (client->isRegistered())
-	{
-		std::string err = ":irc_server 462 :You may not re-register\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
-	}
-	size_t colonPos = arg.find(':');
-	std::string username = "";
-	std::string realname = "";
-	if (colonPos != std::string::npos)
-	{
-		std::string firstPart = arg.substr(0, colonPos);
-		realname = arg.substr(colonPos + 1);
-		std::stringstream ss(firstPart);
-		ss >> username;
-	}
-	else
-	{
-		std::stringstream ss(arg);
-		ss >> username;
-	}
-	if (!username.empty())
-	{
-		client->setUsername(username);
-		if (!realname.empty())
-			client->setRealname(realname);
-		if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
-		{
-			client->setRegistered(true);
-			std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
-			send(client->getFd(), welcome.c_str(), welcome.length(), 0);
-		}
-	}
+    if (client->isRegistered())
+    {
+        std::string err = ":irc_server 462 :You may not re-register\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return ;
+    }
+    std::stringstream ss(arg);
+    std::string username, mode, unused, realname;
+    ss >> username >> mode >> unused;
+    size_t colonPos = arg.find(':');
+    if (username.empty() || mode.empty() || unused.empty() || colonPos == std::string::npos)
+    {
+        std::string err = ":irc_server 461 USER :Not enough parameters\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return ;
+    }
+    realname = arg.substr(colonPos + 1);
+    if (!username.empty())
+    {
+        client->setUsername(username);
+        client->setRealname(realname);
+
+        if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
+        {
+            client->setRegistered(true);
+            std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+            send(client->getFd(), welcome.c_str(), welcome.length(), 0);
+        }
+    }
 }
 
 void	Server::_executePING(int fd, std::string arg)
@@ -525,11 +521,14 @@ void Server::_executeJOIN(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
+	size_t pos;
+	while ((pos = arg.find(" ,")) != std::string::npos)
+		arg.erase(pos, 1);
+	while ((pos = arg.find(", ")) != std::string::npos)
+		arg.erase(pos + 1, 1);
 	size_t spacePos = arg.find(' ');
 	std::string channelsStr = "";
 	std::string keysStr = "";
-
 	if (spacePos == std::string::npos)
 		channelsStr = arg;
 	else
@@ -659,26 +658,37 @@ void Server::_executePART(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	size_t spacePos = arg.find(' ');
+	size_t colonPos = arg.find(':');
+	std::string firstPart = arg;
+	if (colonPos != std::string::npos)
+		firstPart = arg.substr(0, colonPos);
+
+	size_t pos;
+	while ((pos = firstPart.find(" ,")) != std::string::npos)
+		firstPart.erase(pos, 1);
+	while ((pos = firstPart.find(", ")) != std::string::npos)
+		firstPart.erase(pos + 1, 1);
+
+	size_t spacePos = firstPart.find(' ');
 	std::string channelsStr = "";
 	std::string reason = "";
+
 	if (spacePos == std::string::npos)
 	{
-		channelsStr = arg;
-		reason = "";
+		channelsStr = firstPart;
+		if (colonPos != std::string::npos)
+			reason = arg.substr(colonPos + 1);
 	}
 	else
 	{
-		channelsStr = arg.substr(0, spacePos);
-		std::string rest = arg.substr(spacePos + 1);
-		while (!rest.empty() && rest[0] == ' ')
-			rest.erase(0, 1);
-		if (!rest.empty() && rest[0] == ':')
-		{
-			reason = rest.substr(1);
-		}
+		channelsStr = firstPart.substr(0, spacePos);
+		if (colonPos != std::string::npos)
+			reason = arg.substr(colonPos + 1);
 		else
 		{
+			std::string rest = firstPart.substr(spacePos + 1);
+			while (!rest.empty() && rest[0] == ' ')
+				rest.erase(0, 1);
 			reason = rest;
 		}
 	}
@@ -742,29 +752,36 @@ void Server::_executeKICK(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
-	std::stringstream ss(arg);
+	std::string firstPart = arg;
+	size_t colonPos = arg.find(':');
+	if (colonPos != std::string::npos)
+		firstPart = arg.substr(0, colonPos);
+	size_t pos;
+	while ((pos = firstPart.find(" ,")) != std::string::npos)
+		firstPart.erase(pos, 1);
+	while ((pos = firstPart.find(", ")) != std::string::npos)
+		firstPart.erase(pos + 1, 1);
+	std::stringstream ss(firstPart);
 	std::string channelsStr;
 	std::string usersStr;
-	std::string reason;
-
 	ss >> channelsStr >> usersStr;
-	std::getline(ss, reason);
-
+	std::string reason;
+	if (colonPos != std::string::npos)
+		reason = ":" + arg.substr(colonPos + 1);
+	else
+		std::getline(ss, reason);
 	if (channelsStr.empty() || usersStr.empty())
 	{
 		std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
 	if (!reason.empty() && reason[0] == ' ')
 		reason.erase(0, 1);
 	if (!reason.empty() && reason[0] == ':')
 		reason = reason.substr(1);
 	if (reason.empty())
 		reason = "Kicked from channel";
-
 	std::vector<std::string> channels;
 	std::stringstream ssChan(channelsStr);
 	std::string chan;
