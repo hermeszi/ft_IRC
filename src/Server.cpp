@@ -671,6 +671,8 @@ void Server::_executePART(Client *client, std::string arg)
 	{
 		channelsStr = arg.substr(0, spacePos);
 		std::string rest = arg.substr(spacePos + 1);
+		while (!rest.empty() && rest[0] == ' ')
+			rest.erase(0, 1);
 		if (!rest.empty() && rest[0] == ':')
 		{
 			reason = rest.substr(1);
