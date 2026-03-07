@@ -358,41 +358,37 @@ void	Server::_executeNICK(Client *client, std::string arg)
 	}
 }
 
-void	Server::_executeUSER(Client *client, std::string arg)
+void    Server::_executeUSER(Client *client, std::string arg)
 {
-	if (client->isRegistered())
-	{
-		std::string err = ":irc_server 462 :You may not re-register\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
-	}
-	size_t colonPos = arg.find(':');
-	std::string username = "";
-	std::string realname = "";
-	if (colonPos != std::string::npos)
-	{
-		std::string firstPart = arg.substr(0, colonPos);
-		realname = arg.substr(colonPos + 1);
-		std::stringstream ss(firstPart);
-		ss >> username;
-	}
-	else
-	{
-		std::stringstream ss(arg);
-		ss >> username;
-	}
-	if (!username.empty())
-	{
-		client->setUsername(username);
-		if (!realname.empty())
-			client->setRealname(realname);
-		if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
-		{
-			client->setRegistered(true);
-			std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
-			send(client->getFd(), welcome.c_str(), welcome.length(), 0);
-		}
-	}
+    if (client->isRegistered())
+    {
+        std::string err = ":irc_server 462 :You may not re-register\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return ;
+    }
+    std::stringstream ss(arg);
+    std::string username, mode, unused, realname;
+    ss >> username >> mode >> unused;
+    size_t colonPos = arg.find(':');
+    if (username.empty() || mode.empty() || unused.empty() || colonPos == std::string::npos)
+    {
+        std::string err = ":irc_server 461 USER :Not enough parameters\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return ;
+    }
+    realname = arg.substr(colonPos + 1);
+    if (!username.empty())
+    {
+        client->setUsername(username);
+        client->setRealname(realname);
+
+        if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
+        {
+            client->setRegistered(true);
+            std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+            send(client->getFd(), welcome.c_str(), welcome.length(), 0);
+        }
+    }
 }
 
 void	Server::_executePING(int fd, std::string arg)
