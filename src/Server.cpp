@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/06 21:30:11 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/07 16:50:48 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -886,13 +886,32 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 	{
     	channelName = arg.substr(0, spacePos);
     	std::string rest = arg.substr(spacePos + 1);
-		if (!rest.empty() && rest[0] == ':')
+		size_t firstNonSpace = rest.find_first_not_of(' ');
+		if (firstNonSpace != std::string::npos)
 		{
-			newTopic = rest.substr(1);
+			rest = rest.substr(firstNonSpace);
+		}
+		if (!rest.empty())
+		{
+			while (!rest.empty() && rest[0] == ' ')
+			{
+    			rest.erase(0, 1);
+			}
+			if (rest[0] == ':')
+			{
+				newTopic = rest.substr(1);
+				
+			}
+			else //no colon
+			{
+				size_t nextSpace = rest.find(' ');
+				newTopic = rest.substr(0, nextSpace);
+			}
 		}
 		else
 		{
-			newTopic = rest;
+    		// User sent: TOPIC #chan (and a space but nothing else)
+    		newTopic = "";
 		}
 	}
 	if (channelName.empty())
@@ -1181,6 +1200,17 @@ void Server::_executeMODE(Client *client, std::string arg)
 							channel->removeOperator(target);
 							std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -o " + target->getNickname() + "\r\n";
     						channel->broadcast(modeMsg, NULL);
+							
+							if (!channel->hasOperators()) //auto-promote if no operator
+							{
+								Client *newOp = channel->getFirstMember();
+								if (newOp)
+								{
+									channel->addOperator(newOp);
+									std::string modeMsg = ":irc_server MODE " + channelName + " +o " + newOp->getNickname() + "\r\n";
+									channel->broadcast(modeMsg, NULL);
+								}
+							}
 						}
 						else
 						{
