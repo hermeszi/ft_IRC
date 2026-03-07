@@ -1,3 +1,7 @@
 .cursor/
 .clangd
 .DS_Store
+
+*.d
+*.o
+ircserv
