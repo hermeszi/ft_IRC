@@ -70,7 +70,7 @@ Network → poll() → recv() → Client buffer → extractLine() → parseMessa
 ```
 
 ---
-
+## Instructions ##
 ### Requirements
 
 * A C++ compiler supporting **C++98** (e.g. `c++` / `g++` / `clang++`)
