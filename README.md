@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by jngew🍌, myuen🍌.
+*This project has been created as part of the 42 curriculum by jngew🍌, myuen🍌.*
 
 # 📟 ft_irc
 
@@ -70,7 +70,7 @@ Network → poll() → recv() → Client buffer → extractLine() → parseMessa
 ```
 
 ---
-
+## Instructions ##
 ### Requirements
 
 * A C++ compiler supporting **C++98** (e.g. `c++` / `g++` / `clang++`)

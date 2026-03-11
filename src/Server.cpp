@@ -141,7 +141,12 @@ void	Server::run()
 					int	bytes_received = recv(_pollfds[x].fd, buffer, sizeof(buffer) - 1, 0);
 					if (bytes_received <= 0)
 					{
-						closeClient(_pollfds[x].fd);
+						int	client_fd = _pollfds[x].fd;
+						Client *client = _clients[client_fd];
+						if (client)
+							_executeQUIT(client, "Client disconnected abruptly");
+						else
+							closeClient(client_fd);
 						_pollfds.erase(_pollfds.begin() + x);
 						x--;
 					}
@@ -215,65 +220,65 @@ void	Server::closeClient(int fd)
 	}
 }
 
-void    Server::parseMessage(std::string message, int fd)
+void	Server::parseMessage(std::string message, int fd)
 {
-    if (message.empty())
-        return ;
-    if (message.length() > 0 && message[message.length() - 1] == '\n')
-        message.erase(message.length() - 1);
-    if (message.length() > 0 && message[message.length() - 1] == '\r')
-        message.erase(message.length() - 1);
-    if (message.empty())
-        return ;
-    std::stringstream ss(message);
-    std::string command;
-    ss >> command;
-    for (size_t x = 0; x < command.length(); x++)
-        command[x] = std::toupper(static_cast<unsigned char>(command[x]));
-    std::string    arg;
-    std::getline(ss, arg);
-    if (!arg.empty() && arg[0] == ' ')
-        arg.erase(0, 1);
-    Client    *client = _clients[fd];
-    if (!client)
-        return ;
-    if (command == "PASS")
-        _executePASS(client, arg);
-    else if (command == "NICK")
-        _executeNICK(client, arg);
-    else if (command == "USER")
-        _executeUSER(client, arg);
-    else if (command == "QUIT")
-        _executeQUIT(client, arg);
-    else if (command == "CAP")
-        return ;
-    else if (!client->isRegistered())
-    {
-        std::string err = ":irc_server 451 :You have not registered\r\n";
-        send(fd, err.c_str(), err.length(), 0);
-    }
-    else if (command == "PING")
-        _executePING(fd, arg);
-    else if (command == "PRIVMSG")
-        _executePRIVMSG(client, arg);
-    else if (command == "JOIN")
-        _executeJOIN(client, arg);
-    else if (command == "KICK")
-        _executeKICK(client, arg);
-    else if (command == "PART")
-        _executePART(client, arg);
-    else if (command == "TOPIC")
-        _executeTOPIC(client, arg);
-    else if (command == "MODE")
-        _executeMODE(client, arg);
-    else if (command == "INVITE")
-        _executeINVITE(client, arg);
-    else
-    {
-        std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
-        send(fd, err.c_str(), err.length(), 0);
-        std::cout << "Unknown Command: " << command << std::endl;
-    }
+	if (message.empty())
+		return ;
+	if (message.length() > 0 && message[message.length() - 1] == '\n')
+		message.erase(message.length() - 1);
+	if (message.length() > 0 && message[message.length() - 1] == '\r')
+		message.erase(message.length() - 1);
+	if (message.empty())
+		return ;
+	std::stringstream ss(message);
+	std::string command;
+	ss >> command;
+	for (size_t x = 0; x < command.length(); x++)
+		command[x] = std::toupper(static_cast<unsigned char>(command[x]));
+    std::string	arg;
+	std::getline(ss, arg);
+	while (!arg.empty() && arg[0] == ' ')
+		arg.erase(0, 1);
+	Client	*client = _clients[fd];
+	if (!client)
+		return ;
+	if (command == "PASS")
+		_executePASS(client, arg);
+	else if (command == "NICK")
+		_executeNICK(client, arg);
+	else if (command == "USER")
+		_executeUSER(client, arg);
+	else if (command == "QUIT")
+		_executeQUIT(client, arg);
+	else if (command == "CAP")
+		return ;
+	else if (!client->isRegistered())
+	{
+		std::string err = ":irc_server 451 :You have not registered\r\n";
+		send(fd, err.c_str(), err.length(), 0);
+	}
+	else if (command == "PING")
+		_executePING(fd, arg);
+	else if (command == "PRIVMSG")
+		_executePRIVMSG(client, arg);
+	else if (command == "JOIN")
+		_executeJOIN(client, arg);
+	else if (command == "KICK")
+		_executeKICK(client, arg);
+	else if (command == "PART")
+		_executePART(client, arg);
+	else if (command == "TOPIC")
+		_executeTOPIC(client, arg);
+	else if (command == "MODE")
+		_executeMODE(client, arg);
+	else if (command == "INVITE")
+		_executeINVITE(client, arg);
+	else
+	{
+		std::string err = ":irc_server 421 " + command + " :Unknown command\r\n";
+		send(fd, err.c_str(), err.length(), 0);
+		std::cout << "Unknown Command: " << command << std::endl;
+	}
 }
 
 void	Server::_executePASS(Client *client, std::string arg)
@@ -353,41 +358,37 @@ void	Server::_executeNICK(Client *client, std::string arg)
 	}
 }
 
-void	Server::_executeUSER(Client *client, std::string arg)
+void    Server::_executeUSER(Client *client, std::string arg)
 {
-	if (client->isRegistered())
-	{
-		std::string err = ":irc_server 462 :You may not re-register\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
-	}
-	size_t colonPos = arg.find(':');
-	std::string username = "";
-	std::string realname = "";
-	if (colonPos != std::string::npos)
-	{
-		std::string firstPart = arg.substr(0, colonPos);
-		realname = arg.substr(colonPos + 1);
-		std::stringstream ss(firstPart);
-		ss >> username;
-	}
-	else
-	{
-		std::stringstream ss(arg);
-		ss >> username;
-	}
-	if (!username.empty())
-	{
-		client->setUsername(username);
-		if (!realname.empty())
-			client->setRealname(realname);
-		if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
-		{
-			client->setRegistered(true);
-			std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
-			send(client->getFd(), welcome.c_str(), welcome.length(), 0);
-		}
-	}
+    if (client->isRegistered())
+    {
+        std::string err = ":irc_server 462 :You may not re-register\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return ;
+    }
+    std::stringstream ss(arg);
+    std::string username, mode, unused, realname;
+    ss >> username >> mode >> unused;
+    size_t colonPos = arg.find(':');
+    if (username.empty() || mode.empty() || unused.empty() || colonPos == std::string::npos)
+    {
+        std::string err = ":irc_server 461 USER :Not enough parameters\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return ;
+    }
+    realname = arg.substr(colonPos + 1);
+    if (!username.empty())
+    {
+        client->setUsername(username);
+        client->setRealname(realname);
+
+        if (client->hasPassword() && !client->getNickname().empty() && !client->isRegistered())
+        {
+            client->setRegistered(true);
+            std::string welcome = ":irc_server 001 " + client->getNickname() + " :Welcome to the IRC Network\r\n";
+            send(client->getFd(), welcome.c_str(), welcome.length(), 0);
+        }
+    }
 }
 
 void	Server::_executePING(int fd, std::string arg)
@@ -441,6 +442,8 @@ void Server::_executePRIVMSG(Client *client, std::string arg)
 	std::string targ;
 	while (std::getline(ssTargets, targ, ','))
 	{
+		while (!targ.empty() && targ[0] == ' ')
+			targ.erase(0, 1);
 		if (!targ.empty())
 			targets.push_back(targ);
 	}
@@ -518,11 +521,14 @@ void Server::_executeJOIN(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
+	size_t pos;
+	while ((pos = arg.find(" ,")) != std::string::npos)
+		arg.erase(pos, 1);
+	while ((pos = arg.find(", ")) != std::string::npos)
+		arg.erase(pos + 1, 1);
 	size_t spacePos = arg.find(' ');
 	std::string channelsStr = "";
 	std::string keysStr = "";
-
 	if (spacePos == std::string::npos)
 		channelsStr = arg;
 	else
@@ -537,6 +543,8 @@ void Server::_executeJOIN(Client *client, std::string arg)
 	std::string chan;
 	while (std::getline(ssChan, chan, ','))
 	{
+		while (!chan.empty() && chan[0] == ' ')
+			chan.erase(0, 1);
 		if (!chan.empty())
 			channels.push_back(chan);
 	}
@@ -547,6 +555,8 @@ void Server::_executeJOIN(Client *client, std::string arg)
 	std::string key;
 	while (std::getline(ssKey, key, ','))
 	{
+		while (!key.empty() && key[0] == ' ')
+			key.erase(0, 1);
 		if (!key.empty())
 			keys.push_back(key);
 	}
@@ -648,24 +658,37 @@ void Server::_executePART(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-	size_t spacePos = arg.find(' ');
+	size_t colonPos = arg.find(':');
+	std::string firstPart = arg;
+	if (colonPos != std::string::npos)
+		firstPart = arg.substr(0, colonPos);
+
+	size_t pos;
+	while ((pos = firstPart.find(" ,")) != std::string::npos)
+		firstPart.erase(pos, 1);
+	while ((pos = firstPart.find(", ")) != std::string::npos)
+		firstPart.erase(pos + 1, 1);
+
+	size_t spacePos = firstPart.find(' ');
 	std::string channelsStr = "";
 	std::string reason = "";
+
 	if (spacePos == std::string::npos)
 	{
-		channelsStr = arg;
-		reason = "";
+		channelsStr = firstPart;
+		if (colonPos != std::string::npos)
+			reason = arg.substr(colonPos + 1);
 	}
 	else
 	{
-		channelsStr = arg.substr(0, spacePos);
-		std::string rest = arg.substr(spacePos + 1);
-		if (!rest.empty() && rest[0] == ':')
-		{
-			reason = rest.substr(1);
-		}
+		channelsStr = firstPart.substr(0, spacePos);
+		if (colonPos != std::string::npos)
+			reason = arg.substr(colonPos + 1);
 		else
 		{
+			std::string rest = firstPart.substr(spacePos + 1);
+			while (!rest.empty() && rest[0] == ' ')
+				rest.erase(0, 1);
 			reason = rest;
 		}
 	}
@@ -674,6 +697,8 @@ void Server::_executePART(Client *client, std::string arg)
 	std::string chan;
 	while (std::getline(ss, chan, ','))
 	{
+		while (!chan.empty() && chan[0] == ' ')
+			chan.erase(0, 1);
 		if (!chan.empty())
 			channelsToLeave.push_back(chan);
 	}
@@ -727,34 +752,43 @@ void Server::_executeKICK(Client *client, std::string arg)
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
-	std::stringstream ss(arg);
+	std::string firstPart = arg;
+	size_t colonPos = arg.find(':');
+	if (colonPos != std::string::npos)
+		firstPart = arg.substr(0, colonPos);
+	size_t pos;
+	while ((pos = firstPart.find(" ,")) != std::string::npos)
+		firstPart.erase(pos, 1);
+	while ((pos = firstPart.find(", ")) != std::string::npos)
+		firstPart.erase(pos + 1, 1);
+	std::stringstream ss(firstPart);
 	std::string channelsStr;
 	std::string usersStr;
-	std::string reason;
-
 	ss >> channelsStr >> usersStr;
-	std::getline(ss, reason);
-
+	std::string reason;
+	if (colonPos != std::string::npos)
+		reason = ":" + arg.substr(colonPos + 1);
+	else
+		std::getline(ss, reason);
 	if (channelsStr.empty() || usersStr.empty())
 	{
 		std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return ;
 	}
-
 	if (!reason.empty() && reason[0] == ' ')
 		reason.erase(0, 1);
 	if (!reason.empty() && reason[0] == ':')
 		reason = reason.substr(1);
 	if (reason.empty())
 		reason = "Kicked from channel";
-
 	std::vector<std::string> channels;
 	std::stringstream ssChan(channelsStr);
 	std::string chan;
 	while (std::getline(ssChan, chan, ','))
 	{
+		while (!chan.empty() && chan[0] == ' ')
+			chan.erase(0, 1);
 		if (!chan.empty())
 			channels.push_back(chan);
 	}
@@ -764,23 +798,20 @@ void Server::_executeKICK(Client *client, std::string arg)
 	std::string user;
 	while (std::getline(ssUser, user, ','))
 	{
+		while (!user.empty() && user[0] == ' ')
+			user.erase(0, 1);
 		if (!user.empty())
 			users.push_back(user);
 	}
 
-	for (size_t i = 0; i < users.size(); ++i)
+	size_t maxCount = (channels.size() > users.size()) ? channels.size() : users.size();
+	for (size_t x = 0; x < maxCount; ++x)
 	{
-		std::string channelName = (channels.size() == 1) ? channels[0] : (i < channels.size() ? channels[i] : "");
-		if (channelName.empty())
-			continue;
+		std::string channelName = (channels.size() == 1) ? channels[0] : (x < channels.size() ? channels[x] : "");
+		std::string targetUser = (users.size() == 1) ? users[0] : (x < users.size() ? users[x] : "");
 
-		std::string targetUser = users[i];
-		if (channelName.empty())
-		{
-			std::string err = ":irc_server 461 KICK :Not enough parameters\r\n";
-			send(client->getFd(), err.c_str(), err.length(), 0);
-			return ;
-		}
+		if (channelName.empty() || targetUser.empty())
+			continue;
 		if (channelName[0] != '#')
 			channelName = "#" + channelName;
 
@@ -872,20 +903,33 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 	{
     	channelName = arg.substr(0, spacePos);
     	std::string rest = arg.substr(spacePos + 1);
-		if (!rest.empty() && rest[0] == ':')
+		size_t firstNonSpace = rest.find_first_not_of(' ');
+		if (firstNonSpace != std::string::npos)
 		{
-			newTopic = rest.substr(1);
+			rest = rest.substr(firstNonSpace);
+		}
+		if (!rest.empty())
+		{
+			while (!rest.empty() && rest[0] == ' ')
+			{
+    			rest.erase(0, 1);
+			}
+			if (rest[0] == ':')
+			{
+				newTopic = rest.substr(1);
+				
+			}
+			else //no colon
+			{
+				size_t nextSpace = rest.find(' ');
+				newTopic = rest.substr(0, nextSpace);
+			}
 		}
 		else
 		{
-			newTopic = rest;
+    		// User sent: TOPIC #chan (and a space but nothing else)
+    		newTopic = "";
 		}
-	}
-	if (channelName.empty())
-	{
-		std::string err = ":irc_server 461 TOPIC :Not enough parameters\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
 	}
 	if (channelName.empty())
 	{
@@ -1013,12 +1057,6 @@ void Server::_executeMODE(Client *client, std::string arg)
 				parameter.erase(0, 1);
 			}
 		}
-	}
-	if (channelName.empty())
-	{
-		std::string err = ":irc_server 461 MODE :Not enough parameters\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return ;
 	}
 	if (channelName.empty())
 	{
@@ -1179,6 +1217,17 @@ void Server::_executeMODE(Client *client, std::string arg)
 							channel->removeOperator(target);
 							std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -o " + target->getNickname() + "\r\n";
     						channel->broadcast(modeMsg, NULL);
+							
+							if (!channel->hasOperators()) //auto-promote if no operator
+							{
+								Client *newOp = channel->getFirstMember();
+								if (newOp)
+								{
+									channel->addOperator(newOp);
+									std::string modeMsg = ":irc_server MODE " + channelName + " +o " + newOp->getNickname() + "\r\n";
+									channel->broadcast(modeMsg, NULL);
+								}
+							}
 						}
 						else
 						{
