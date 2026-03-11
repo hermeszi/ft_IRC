@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/06 21:30:11 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/11 18:21:25 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -69,10 +69,10 @@ void	Server::init()
 	int	opt = 1;
 	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
 		throw std::runtime_error("Error: setsockopt failed");
-	int	flags = fcntl(_server_fd, F_GETFL, 0);
-	if (flags == -1)
-		throw std::runtime_error("Error: fcntl F_GETFL failed");
-	if (fcntl(_server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+	// int	flags = fcntl(_server_fd, F_GETFL, O);
+	// if (flags == -1)
+	// 	throw std::runtime_error("Error: fcntl F_GETFL failed");
+	if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0)
 		throw std::runtime_error("Error: fcntl F_SETFL failed");
 	struct	sockaddr_in address;
 	address.sin_family = AF_INET;
@@ -117,8 +117,8 @@ void	Server::run()
 					int	new_fd = accept(_server_fd, (struct sockaddr *)&client_addr, &client_len);
 					if (new_fd >= 0)
 					{
-						int	flags = fcntl(new_fd, F_GETFL, 0);
-						if (flags == -1 || fcntl(new_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+						// int	flags = fcntl(new_fd, F_GETFL, 0);
+						if (fcntl(new_fd, F_SETFL, O_NONBLOCK) < 0)
 						{
 							std::cerr << "Error: fcntl on client failed" << std::endl;
 							close(new_fd);
