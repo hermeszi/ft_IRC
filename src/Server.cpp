@@ -239,6 +239,8 @@ void	Server::parseMessage(std::string message, int fd)
 	std::getline(ss, arg);
 	while (!arg.empty() && arg[0] == ' ')
 		arg.erase(0, 1);
+	while (!arg.empty() && arg[arg.length() - 1] == ' ')
+		arg.erase(arg.length() - 1, 1);
 	Client	*client = _clients[fd];
 	if (!client)
 		return ;
@@ -348,12 +350,25 @@ void	Server::_executeNICK(Client *client, std::string arg)
 	{
 		std::string nickMsg = ":" + oldPrefix + " NICK :" + arg + "\r\n";
 		send(client->getFd(), nickMsg.c_str(), nickMsg.length(), 0);
-		std::map<std::string, Channel *>::iterator it = _channels.begin();
-		while (it != _channels.end())
+
+		for (std::map<int, Client *>::iterator cit = _clients.begin(); cit != _clients.end(); ++cit)
 		{
-			if (it->second->isMember(client))
-				it->second->broadcast(nickMsg, client);
-			++it;
+			Client *other = cit->second;
+			if (other == client)
+				continue ;
+
+			bool sharesChannel = false;
+			for (std::map<std::string, Channel *>::iterator ch_it = _channels.begin(); ch_it != _channels.end(); ++ch_it)
+			{
+				if (ch_it->second->isMember(client) && ch_it->second->isMember(other))
+				{
+					sharesChannel = true;
+					break ;
+				}
+			}
+
+			if (sharesChannel)
+				send(other->getFd(), nickMsg.c_str(), nickMsg.length(), 0);
 		}
 	}
 }
@@ -917,7 +932,7 @@ void Server::_executeTOPIC(Client *client, std::string arg)
 			if (rest[0] == ':')
 			{
 				newTopic = rest.substr(1);
-				
+
 			}
 			else //no colon
 			{
@@ -1217,7 +1232,7 @@ void Server::_executeMODE(Client *client, std::string arg)
 							channel->removeOperator(target);
 							std::string modeMsg = ":" + client->getPrefix() + " MODE " + channelName + " -o " + target->getNickname() + "\r\n";
     						channel->broadcast(modeMsg, NULL);
-							
+
 							if (!channel->hasOperators()) //auto-promote if no operator
 							{
 								Client *newOp = channel->getFirstMember();
