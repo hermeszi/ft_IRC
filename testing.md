@@ -342,8 +342,12 @@ TOPIC #room :hello
 
 Example TCP fragments:
 ```
-PRIV
-MSG #room :hello
+{
+    printf 'NI'
+    sleep 2
+    printf 'CK tester\r\n'
+    printf 'PASS 1234\r\nUSER test 0 * :tester\r\n'
+} | nc localhost 1234
 ```
 
 - [ ] Buffered correctly
