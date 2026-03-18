@@ -337,14 +337,6 @@ TOPIC #room :hello
 
 - [ ] Ignored safely
 
-## Multiple commands in one packet
-
-Example:
-```
-NICK a\r\nUSER a 0 * :A\r\nJOIN #x\r\n
-```
-
-- [ ] All commands processed correctly
 
 ## Fragmented input
 
