@@ -6,7 +6,7 @@
 /*   By: myuen <myuen@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 20:18:48 by jngew             #+#    #+#             */
-/*   Updated: 2026/03/11 18:21:25 by myuen            ###   ########.fr       */
+/*   Updated: 2026/03/19 15:44:07 by myuen            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,7 +105,9 @@ void	Server::run()
 			break ;
 		}
 		if (g_stop == true)
+		{	
 			break ;
+		}
 		for (size_t x = 0; x < _pollfds.size(); x++)
 		{
 			if (_pollfds[x].revents & POLLIN)
@@ -139,10 +141,24 @@ void	Server::run()
 					char	buffer[1024];
 					memset(buffer, 0, sizeof(buffer));
 					int	bytes_received = recv(_pollfds[x].fd, buffer, sizeof(buffer) - 1, 0);
-					if (bytes_received <= 0)
+					
+					int	client_fd = _pollfds[x].fd;
+					if (bytes_received < 0)
 					{
-						int	client_fd = _pollfds[x].fd;
-						Client *client = _clients[client_fd];
+						if (errno == EAGAIN || errno == EWOULDBLOCK)
+							continue ;  // nothing to read, not a disconnect
+
+						Client *client = _clients[client_fd];	//real error or disconnect
+						if (client)
+							_executeQUIT(client, "Client disconnected abruptly");
+						else
+							closeClient(client_fd);
+						_pollfds.erase(_pollfds.begin() + x);
+						x--;
+					}
+					else if (bytes_received == 0)
+					{
+						Client *client = _clients[client_fd]; 	// disconnect (Ctrl-C)
 						if (client)
 							_executeQUIT(client, "Client disconnected abruptly");
 						else
@@ -603,6 +619,9 @@ void Server::_executeJOIN(Client *client, std::string arg)
 		else
 		{
 			channel = _channels[name];
+			
+			if (channel->isMember(client))
+				continue ;
 
 			if (channel->isInviteOnly())
 			{
