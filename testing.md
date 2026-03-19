@@ -347,7 +347,7 @@ Example TCP fragments:
     sleep 2
     printf 'CK tester\r\n'
     printf 'PASS 1234\r\nUSER test 0 * :tester\r\n'
-    printf 'quit'
+    printf 'quit\r\n'
 } | nc localhost 6667
 ```
 
