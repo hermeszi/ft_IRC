@@ -105,7 +105,7 @@ void	Server::run()
 			break ;
 		}
 		if (g_stop == true)
-		{	
+		{
 			break ;
 		}
 		for (size_t x = 0; x < _pollfds.size(); x++)
@@ -141,7 +141,7 @@ void	Server::run()
 					char	buffer[1024];
 					memset(buffer, 0, sizeof(buffer));
 					int	bytes_received = recv(_pollfds[x].fd, buffer, sizeof(buffer) - 1, 0);
-					
+
 					int	client_fd = _pollfds[x].fd;
 					if (bytes_received < 0)
 					{
@@ -598,14 +598,16 @@ void Server::_executeJOIN(Client *client, std::string arg)
 		std::string name = channels[x];
 		// Match the password to the channel, if one exists
 		std::string password = (x < keys.size()) ? keys[x] : "";
-
 		if (!name.empty() && name[0] == ':')
 			name.erase(0, 1);
 		if (name.empty())
 			continue;
-		if (name[0] != '#')
-			name = "#" + name;
-
+		if (name[0] != '#' && name[0] != '&')
+		{
+			std::string err = ":irc_server 403 " + client->getNickname() + " " + name + " :No such channel\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			continue;
+		}
 		Channel *channel;
 		bool isNew = false;
 		if (_channels.find(name) == _channels.end())
@@ -619,7 +621,7 @@ void Server::_executeJOIN(Client *client, std::string arg)
 		else
 		{
 			channel = _channels[name];
-			
+
 			if (channel->isMember(client))
 				continue ;
 
