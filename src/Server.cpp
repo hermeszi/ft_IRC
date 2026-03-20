@@ -598,16 +598,14 @@ void Server::_executeJOIN(Client *client, std::string arg)
 		std::string name = channels[x];
 		// Match the password to the channel, if one exists
 		std::string password = (x < keys.size()) ? keys[x] : "";
+
 		if (!name.empty() && name[0] == ':')
 			name.erase(0, 1);
 		if (name.empty())
 			continue;
-		if (name[0] != '#' && name[0] != '&')
-		{
-			std::string err = ":irc_server 403 " + client->getNickname() + " " + name + " :No such channel\r\n";
-			send(client->getFd(), err.c_str(), err.length(), 0);
-			continue;
-		}
+		if (name[0] != '#')
+			name = "#" + name;
+
 		Channel *channel;
 		bool isNew = false;
 		if (_channels.find(name) == _channels.end())
